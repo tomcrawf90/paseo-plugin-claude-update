@@ -159,6 +159,41 @@ describe("notify-only mode", () => {
   });
 });
 
+describe("recording an update", () => {
+  it("keeps the version to roll back to when the history cannot be written", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.store.appendHistory = async () => {
+      throw new Error("disk full");
+    };
+    h.store.log = async () => {
+      throw new Error("disk full");
+    };
+    const errors: unknown[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => void errors.push(args);
+    try {
+      const state = await runCheck(h.deps, settingsWith(), "schedule");
+      expect(state.lastOutcome).toBe("updated");
+      expect(h.store.state.previousVersion).toBe("2.1.285");
+      expect(h.store.state.installedVersion).toBe("2.1.292");
+      expect(h.notifications).toHaveLength(1);
+      expect(errors).toHaveLength(2);
+    } finally {
+      console.error = original;
+    }
+  });
+
+  it("still writes the history and the log when the state cannot be written, then says so", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.store.writeState = async () => {
+      throw new Error("disk full");
+    };
+    await expect(runCheck(h.deps, settingsWith(), "schedule")).rejects.toThrow("disk full");
+    expect(h.store.history.map((entry) => [entry.outcome, entry.from, entry.to])).toEqual([["updated", "2.1.285", "2.1.292"]]);
+    expect(h.store.lines).toHaveLength(1);
+  });
+});
+
 describe("failures", () => {
   it("fails when the launcher cannot be found, without running anything", async () => {
     const h = harness("2.1.285", "2.1.292");

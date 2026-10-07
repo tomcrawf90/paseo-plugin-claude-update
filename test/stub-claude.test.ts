@@ -151,7 +151,12 @@ describe("with a stub claude on PATH", () => {
 
   it("runs on the service's own timer and survives a restart without a second update", async () => {
     const first = startService(deps, async () => settingsWith(), { startupDelayMs: 5, tickMs: 20, minimumGapMs: 0 });
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Wait for the first check to finish, however slow the machine: a second
+    // service started over a check still running would be a different test.
+    for (let waited = 0; waited < 10_000 && (await calls().catch(() => [])).length < 3; waited += 50) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
     first.stop();
     const second = startService(deps, async () => settingsWith(), { startupDelayMs: 5, tickMs: 20, minimumGapMs: 0 });
     await new Promise((resolve) => setTimeout(resolve, 200));

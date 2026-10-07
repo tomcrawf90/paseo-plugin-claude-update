@@ -106,9 +106,24 @@ export async function runCheck(
         : 'Nothing was changed. Use "Update now" to install it.';
   const known: Partial<State> = {};
 
-  async function save(state: State, line: string): Promise<State> {
-    await store.log(`${at} ${trigger} ${line}`);
-    await store.writeState(state);
+  /**
+   * Writes down a finished check. The state goes first and is the only write
+   * that may fail the check: it holds what a later check and the rollback note
+   * need, such as the version before an update. The history line and the log
+   * line are records of it and are attempted whatever happens to each other.
+   */
+  async function save(state: State, line: string, history?: HistoryEntry): Promise<State> {
+    let failure: unknown = null;
+    try {
+      await store.writeState(state);
+    } catch (error) {
+      failure = error;
+    }
+    if (history !== undefined) {
+      await store.appendHistory(history).catch((error: unknown) => console.error("[claude-update] could not write the history:", error));
+    }
+    await store.log(`${at} ${trigger} ${line}`).catch((error: unknown) => console.error("[claude-update] could not write the log:", error));
+    if (failure !== null) throw failure;
     return state;
   }
 
@@ -146,9 +161,7 @@ export async function runCheck(
     change: { from: string | null; to: string | null; key: string | null },
   ): Promise<State> {
     if (change.key !== null && previous.announced === change.key) return quiet(outcome, message);
-    await store.appendHistory(entry(outcome, message, change.from, change.to));
-    if (settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, message).catch(() => undefined);
-    return save(
+    const saved = await save(
       {
         ...previous,
         ...known,
@@ -162,17 +175,18 @@ export async function runCheck(
         announced: change.key,
       },
       `${outcome}: ${message}`,
+      entry(outcome, message, change.from, change.to),
     );
+    if (settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, message).catch(() => undefined);
+    return saved;
   }
 
   async function fail(message: string): Promise<State> {
     const failures = previous.consecutiveFailures + 1;
     const retryNotBefore = new Date(deps.now().getTime() + backoffMs(failures, settings.intervalHours * HOUR_MS)).toISOString();
-    await store.appendHistory(entry("failed", message, known.installedVersion ?? null, null));
     const alert = failures === FAILURE_ALERT_AFTER;
     const notice = `Claude Code update check has failed ${failures} times in a row. Last error: ${message}`;
-    if (alert && settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, notice).catch(() => undefined);
-    return save(
+    const saved = await save(
       {
         ...previous,
         ...known,
@@ -184,7 +198,10 @@ export async function runCheck(
         attention: alert ? { kind: "failed", message: notice, at } : previous.attention,
       },
       `failed (${failures} in a row, next not before ${retryNotBefore}): ${message}`,
+      entry("failed", message, known.installedVersion ?? null, null),
     );
+    if (alert && settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, notice).catch(() => undefined);
+    return saved;
   }
 
   const claudePath = await findClaude({
