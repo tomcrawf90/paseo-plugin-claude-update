@@ -18,8 +18,12 @@ export const updateSettings = defineSettings({
   schema: z.object({
     /** The disable switch: off means no scheduled checks at all. */
     enabled: z.boolean().default(true),
-    /** `auto` installs updates; `notify` only reports that one is available. */
-    mode: z.enum(MODES).default("auto"),
+    /**
+     * `notify` only reports that an update is available; `auto` installs it on
+     * the schedule. A fresh install starts on `notify`, so that installing the
+     * plugin never changes the CLI before its owner has chosen that.
+     */
+    mode: z.enum(MODES).default("notify"),
     /** The release channel the installed version is compared against. */
     channel: z.enum(CHANNELS).default("latest"),
     intervalHours: z.number().min(MIN_INTERVAL_HOURS).max(MAX_INTERVAL_HOURS).default(DEFAULT_INTERVAL_HOURS),

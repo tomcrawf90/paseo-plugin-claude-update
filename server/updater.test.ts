@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_SETTINGS } from "../shared/settings";
 import { exit, harness, ok, settingsWith } from "../test/support";
 import { backoffMs, FAILURE_ALERT_AFTER, isDue, nextCheckAt, runCheck } from "./updater";
 import { EMPTY_STATE } from "./store";
@@ -106,6 +107,15 @@ describe("runCheck when an update exists", () => {
 });
 
 describe("notify-only mode", () => {
+  it("is what a fresh install runs in: the scheduled check installs nothing", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    expect(DEFAULT_SETTINGS.mode).toBe("notify");
+    const state = await runCheck(h.deps, DEFAULT_SETTINGS, "schedule");
+    expect(state.lastOutcome).toBe("update-available");
+    expect(h.claude.calls).toEqual(["--version"]);
+    expect(h.claude.installed).toBe("2.1.285");
+  });
+
   it("reports an update once and never installs", async () => {
     const h = harness("2.1.285", "2.1.292");
     const settings = settingsWith({ mode: "notify" });

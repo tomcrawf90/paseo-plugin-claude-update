@@ -7,7 +7,7 @@ All notable changes to this plugin are listed here. Versions follow [semantic ve
 First version.
 
 - Scheduled check of the installed Claude Code CLI against the `latest` or `stable` release channel.
-- Installs updates with `claude update` and confirms the new version; "Only tell me" mode reports without installing.
+- Starts in "Only tell me" mode, which reports an available update without installing. "Install updates" runs `claude update` on the schedule and confirms the new version.
 - Pin to an exact version with `claude install <version>`; a disable switch for the schedule.
 - Status page, settings screen, Command Center items, a sidebar row that carries news, macOS notifications.
 - Lists running Claude Code processes that are still on an older version (macOS).

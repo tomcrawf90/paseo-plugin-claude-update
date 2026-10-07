@@ -129,4 +129,5 @@ export function harness(installed: string, latest = installed, state: Partial<St
   return h;
 }
 
-export const settingsWith = (patch: Partial<UpdateSettings> = {}): UpdateSettings => ({ ...DEFAULT_SETTINGS, ...patch });
+/** Settings for a test. Most tests are about installing, so the mode here is `auto`, not the shipped default. */
+export const settingsWith = (patch: Partial<UpdateSettings> = {}): UpdateSettings => ({ ...DEFAULT_SETTINGS, mode: "auto", ...patch });

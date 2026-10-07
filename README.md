@@ -9,14 +9,15 @@ Claude Code updates itself only from its interactive terminal interface. Paseo r
 one, so on a machine that uses Claude mostly through Paseo the updater never runs and the CLI falls
 behind. New models often need a newer CLI, so a stale CLI means missing them.
 
-This plugin runs the CLI's own updater, `claude update`, on a schedule and tells you what happened.
+This plugin checks for a new version on a schedule and tells you. Once you switch it to **Install
+updates** it also runs the CLI's own updater, `claude update`, and tells you what happened.
 
 ## What it does
 
 | | |
 | --- | --- |
 | Checks | Every 4 hours by default, it compares `claude --version` with the version the release channel points at. |
-| Updates | When the CLI is behind, it runs `claude update`, then reads the version again to confirm. |
+| Updates | Off until you choose it. Set to "Install updates", it runs `claude update` when the CLI is behind, then reads the version again to confirm. Until then it only tells you; "Update now" installs on request. |
 | Reports | An entry in its status page, a changed sidebar row, a macOS notification, and a log file. |
 | Lists old processes | Running Claude Code processes (Paseo agents and Claude's own background daemon) that are still on an older version. It never restarts or interrupts them. |
 | Stays quiet | A check that finds nothing new changes nothing you can see. |
@@ -41,8 +42,9 @@ paseo plugin install /absolute/path/to/paseo-plugin-claude-update
 ```
 
 Then `paseo plugin ls` should show `claude-update` as `running`. The first check happens about 30
-seconds after the plugin starts, and it installs an update if one is available. To look before it
-acts, switch to **Only tell me** in the settings straight after installing.
+seconds after the plugin starts. A fresh install only tells you when an update is available and
+changes nothing; switch **When an update is found** to **Install updates** in the settings to have
+it update on the schedule.
 
 Open **Claude Code updates** in the sidebar for the status page, or **Settings → Plugins → Claude
 Code updates** for the settings. The Command Center (⌘K) has "Claude Code updates: check now".
@@ -54,7 +56,7 @@ Settings are per daemon host, under **Settings → Plugins → Claude Code updat
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Check on a schedule | on | The disable switch. Off stops every scheduled check; "Check now" still works. |
-| When an update is found | Install updates | "Only tell me" reports the update and changes nothing. "Update now" on the status page installs it. |
+| When an update is found | Only tell me | "Only tell me" reports the update and changes nothing. "Install updates" installs it at the scheduled check. "Update now" on the status page installs it in either mode. |
 | Channel | `latest` | The channel the installed version is compared with: `latest` or `stable` (about a week behind). See the note below. |
 | Check every (hours) | 4 | 1 to 168. |
 | Pinned version | empty | An exact version such as `2.1.285`. While set, the plugin holds the CLI at that version with `claude install <version>` and never updates. |

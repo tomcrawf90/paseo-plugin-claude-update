@@ -17,7 +17,7 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | 3 | GitHub repository | `tomcrawf90/paseo-plugin-claude-update`, public | Paseo Cafe needs a public GitHub repository. `package.json` (`homepage`, `repository`, `bugs`) already points at this name; edit it if you choose another. |
 | 4 | Licence and author | MIT, "Tom Crawford" | In `LICENSE` and `package.json`. 216 of 231 listed plugins are MIT. |
 | 5 | Minimum Paseo version | `>=0.10.3` | Typechecked and run against 0.10.3 only. Lowering it needs a test on the older version. |
-| 6 | First-run behaviour | Installs an available update about 30 seconds after the plugin starts | It is what the plugin is for, but a directory user may not expect it. The alternative is to default to "Only tell me" (`mode` in `shared/settings.ts`). |
+| 6 | First-run behaviour | "Only tell me": a fresh install reports an available update and changes nothing until the user picks "Install updates" | Installing a plugin should not change the host's CLI unasked. The alternative is to default to installing (`mode` in `shared/settings.ts`). |
 
 ## 2. Before publishing
 
@@ -70,7 +70,7 @@ Submission is a form at <https://paseo.cafe/submit>. It opens a prefilled GitHub
 Caveats to paste (each is under 140 characters):
 
 ```text
-Installs Claude Code updates automatically about 30 seconds after first start unless set to "Only tell me".
+Only reports updates until you choose "Install updates" in its settings; then it runs claude update on a schedule.
 Supports Claude Code's native installer only, not Homebrew, WinGet or npm installs.
 Tested on macOS only; listing old processes and desktop notifications are macOS only.
 Running agents keep their old Claude Code version until you restart them; nothing is restarted for you.
