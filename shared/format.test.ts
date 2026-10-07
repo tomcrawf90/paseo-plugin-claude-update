@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { relativeTime, sidebarIcon, sidebarTitle } from "./format";
+import { elapsed, relativeTime, sidebarRow } from "./format";
 
 const now = Date.parse("2026-10-07T10:00:00Z");
 const at = (seconds: number) => new Date(now + seconds * 1000).toISOString();
@@ -16,21 +16,45 @@ describe("relativeTime", () => {
   });
 });
 
+describe("elapsed", () => {
+  it("counts seconds, then minutes and seconds", () => {
+    expect(elapsed(-50)).toBe("0 s");
+    expect(elapsed(8_900)).toBe("8 s");
+    expect(elapsed(65_000)).toBe("1 min 05 s");
+  });
+});
+
 describe("the sidebar row", () => {
-  const notice = (kind: "updated" | "failed" | "update-available" | "channel-mismatch") => ({
-    attention: { kind, message: "", at: at(0) },
+  type Kind = "updated" | "failed" | "update-available" | "channel-mismatch" | "pin-mismatch";
+  const process = (pid: number) => ({ pid, version: "2.1.285", kind: "agent" as const, agentId: null, title: null, startedAt: null });
+  const status = (kind: Kind | null, old = 0, supported = true) => ({
+    attention: kind === null ? null : { kind, message: "", at: at(0) },
+    staleProcesses: Array.from({ length: old }, (_, index) => process(index + 1)),
+    processListSupported: supported,
   });
-  it("is plain when there is nothing to say", () => {
-    expect(sidebarTitle(null)).toBe("Claude Code updates");
-    expect(sidebarTitle({ attention: null })).toBe("Claude Code updates");
-    expect(sidebarIcon(null)).toBe("RefreshCw");
-    expect(sidebarIcon({ attention: null })).toBe("RefreshCw");
+
+  it("is absent when there is nothing to say", () => {
+    expect(sidebarRow(null)).toBeNull();
+    expect(sidebarRow(status(null))).toBeNull();
   });
+
+  it("is absent for old processes alone: a dismissed notice stays dismissed", () => {
+    expect(sidebarRow(status(null, 3))).toBeNull();
+  });
+
   it("carries the news", () => {
-    expect(sidebarTitle(notice("updated"))).toBe("Claude Code updated");
-    expect(sidebarTitle(notice("failed"))).toBe("Claude Code update failing");
-    expect(sidebarIcon(notice("failed"))).toBe("TriangleAlert");
-    expect(sidebarIcon(notice("update-available"))).toBe("CircleArrowUp");
-    expect(sidebarTitle(notice("channel-mismatch"))).toBe("Claude Code update needs a look");
+    expect(sidebarRow(status("update-available"))).toEqual({ title: "Claude Code update available", icon: "CircleArrowUp" });
+    expect(sidebarRow(status("failed"))).toEqual({ title: "Claude Code update failing", icon: "TriangleAlert" });
+    expect(sidebarRow(status("channel-mismatch"))?.title).toBe("Claude Code update needs a look");
+    expect(sidebarRow(status("pin-mismatch"))?.icon).toBe("TriangleAlert");
+  });
+
+  it("stays after an update only while something still runs the old version", () => {
+    expect(sidebarRow(status("updated", 9))).toEqual({ title: "Claude Code updated · 9 on an old version", icon: "CircleCheck" });
+    expect(sidebarRow(status("updated", 0))).toBeNull();
+  });
+
+  it("stays after an update where the processes cannot be listed", () => {
+    expect(sidebarRow(status("updated", 0, false))).toEqual({ title: "Claude Code updated", icon: "CircleCheck" });
   });
 });

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { createSidebarRow, type SidebarRow } from "./sidebar";
 
-const BASE: SidebarRow = { title: "Claude Code updates", icon: "RefreshCw" };
 const AVAILABLE: SidebarRow = { title: "Claude Code update available", icon: "CircleArrowUp" };
 const UPDATED: SidebarRow = { title: "Claude Code updated", icon: "CircleCheck" };
 
@@ -11,10 +10,12 @@ function sidebar() {
   const fake = {
     rows: [] as SidebarRow[],
     most: 0,
+    adds: 0,
     failAdd: null as SidebarRow | null,
     failRemove: false,
     add(row: SidebarRow) {
       if (fake.failAdd !== null && row.title === fake.failAdd.title) throw new Error("add refused");
+      fake.adds += 1;
       fake.rows.push(row);
       fake.most = Math.max(fake.most, fake.rows.length);
       return async () => {
@@ -28,76 +29,111 @@ function sidebar() {
 }
 
 describe("the sidebar row", () => {
-  it("is there from the start", () => {
+  it("is not there to begin with, nor after being told there is nothing to say", async () => {
     const fake = sidebar();
-    createSidebarRow(fake.add, BASE);
-    expect(fake.rows).toEqual([BASE]);
+    const row = createSidebarRow(fake.add);
+    expect(fake.rows).toEqual([]);
+    row.show(null);
+    await row.settled();
+    expect(fake.rows).toEqual([]);
+    expect(fake.adds).toBe(0);
+  });
+
+  it("appears when there is news and goes when the news is dismissed", async () => {
+    const fake = sidebar();
+    const row = createSidebarRow(fake.add);
+    row.show(AVAILABLE);
+    await row.settled();
+    expect(fake.rows).toEqual([AVAILABLE]);
+    row.show(null);
+    await row.settled();
+    expect(fake.rows).toEqual([]);
+    row.show(UPDATED);
+    await row.settled();
+    expect(fake.rows).toEqual([UPDATED]);
+    expect(fake.most).toBe(1);
   });
 
   it("ends as one row after two changes close together", async () => {
     const fake = sidebar();
-    const row = createSidebarRow(fake.add, BASE);
+    const row = createSidebarRow(fake.add);
     row.show(AVAILABLE);
     row.show(UPDATED);
     await row.settled();
     expect(fake.rows).toEqual([UPDATED]);
+    expect(fake.most).toBe(1);
+  });
+
+  it("ends with no row when shown and hidden close together", async () => {
+    const fake = sidebar();
+    const row = createSidebarRow(fake.add);
+    row.show(AVAILABLE);
+    await row.settled();
+    row.show(UPDATED);
+    row.show(null);
+    row.show(AVAILABLE);
+    row.show(null);
+    await row.settled();
+    expect(fake.rows).toEqual([]);
     expect(fake.most).toBe(1);
   });
 
   it("does nothing when asked for what it already shows", async () => {
     const fake = sidebar();
-    let adds = 0;
-    const row = createSidebarRow((item) => {
-      adds += 1;
-      return fake.add(item);
-    }, BASE);
-    row.show(BASE);
+    const row = createSidebarRow(fake.add);
     row.show(AVAILABLE);
     row.show(AVAILABLE);
     await row.settled();
-    expect(adds).toBe(2);
+    row.show({ ...AVAILABLE });
+    await row.settled();
+    expect(fake.adds).toBe(1);
     expect(fake.rows).toEqual([AVAILABLE]);
   });
 
-  it("puts the plain row back and says so when a change fails, then tries again", async () => {
+  it("has no row when the new one is refused, says so, and tries again at the next change", async () => {
     const fake = sidebar();
     const reports: string[] = [];
-    const row = createSidebarRow(fake.add, BASE, (message) => void reports.push(message));
+    const row = createSidebarRow(fake.add, (message) => reports.push(message));
     fake.failAdd = AVAILABLE;
     row.show(AVAILABLE);
     await row.settled();
-    expect(fake.rows).toEqual([BASE]);
+    expect(fake.rows).toEqual([]);
     expect(reports).toHaveLength(1);
     fake.failAdd = null;
     row.show(AVAILABLE);
     await row.settled();
     expect(fake.rows).toEqual([AVAILABLE]);
-    expect(fake.most).toBe(1);
   });
 
-  it("keeps working after a row could not be removed", async () => {
+  it("leaves the old row alone when it cannot be removed, and tries again at the next change", async () => {
     const fake = sidebar();
     const reports: string[] = [];
-    const row = createSidebarRow(fake.add, BASE, (message) => void reports.push(message));
-    fake.failRemove = true;
+    const row = createSidebarRow(fake.add, (message) => reports.push(message));
     row.show(AVAILABLE);
     await row.settled();
-    expect(reports).toHaveLength(1);
-    // The old row is still there, alone: nothing was added beside it.
-    expect(fake.rows).toEqual([BASE]);
-    fake.failRemove = false;
+    fake.failRemove = true;
     row.show(UPDATED);
     await row.settled();
-    expect(fake.rows).toEqual([UPDATED]);
+    row.show(null);
+    await row.settled();
+    expect(fake.rows).toEqual([AVAILABLE]);
     expect(fake.most).toBe(1);
+    expect(reports).toHaveLength(2);
+    fake.failRemove = false;
+    row.show(null);
+    await row.settled();
+    expect(fake.rows).toEqual([]);
   });
 
   it("changes nothing once disposed", async () => {
     const fake = sidebar();
-    const row = createSidebarRow(fake.add, BASE);
+    const row = createSidebarRow(fake.add);
+    row.show(AVAILABLE);
+    await row.settled();
     row.dispose();
+    row.show(null);
     row.show(UPDATED);
     await row.settled();
-    expect(fake.rows).toEqual([BASE]);
+    expect(fake.rows).toEqual([AVAILABLE]);
   });
 });
