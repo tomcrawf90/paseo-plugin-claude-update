@@ -138,6 +138,21 @@ describe("the schedule", () => {
     expect(h.claude.calls).toEqual(["--version"]);
   });
 
+  it("keeps a notice dismissed when it was dismissed while a check was running", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const s = start(h, settingsWith({ mode: "notify" }));
+    await s.check("manual", false);
+    expect((await s.status()).attention?.kind).toBe("update-available");
+    let release: () => void = () => {};
+    h.claude.on["--version"] = () => new Promise((resolve) => (release = () => resolve(ok("2.1.285 (Claude Code)\n"))));
+    const check = s.check("manual", false);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const dismissed = s.dismiss();
+    release();
+    await Promise.all([check, dismissed]);
+    expect((await s.status()).attention).toBeNull();
+  });
+
   it("reports nothing running after a check that could not start", async () => {
     const h = harness("2.1.285", "2.1.292");
     const s = start(h, null);

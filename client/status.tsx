@@ -196,9 +196,11 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
   const [result, setResult] = useState<RunResult | null>(null);
   const check = useMutation({
     mutationFn: (action: Action) => runCheck({ apply: action === "update" }),
-    onMutate() {
+    async onMutate() {
       setPressedAt(Date.now());
       setResult(null);
+      // A status read that is under way would land after the answer and show the page as it was.
+      await queryClient.cancelQueries({ queryKey: STATUS_QUERY_KEY });
     },
     onSuccess(next) {
       queryClient.setQueryData(STATUS_QUERY_KEY, next);
@@ -239,6 +241,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
 
   const clear = useMutation({
     mutationFn: () => dismiss({}),
+    onMutate: () => queryClient.cancelQueries({ queryKey: STATUS_QUERY_KEY }),
     onSuccess(next) {
       queryClient.setQueryData(STATUS_QUERY_KEY, next);
     },

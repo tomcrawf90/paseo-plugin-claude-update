@@ -323,6 +323,18 @@ describe("a notice once the install is where it should be", () => {
     expect((await runCheck(h.deps, NOTIFY, "schedule")).attention?.kind).toBe("update-available");
   });
 
+  it("tells the same news again when it comes back after being resolved", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    await runCheck(h.deps, NOTIFY, "schedule");
+    h.claude.installed = "2.1.292";
+    expect((await runCheck(h.deps, NOTIFY, "schedule")).attention).toBeNull();
+    // Rolled back in a terminal: the update is waiting again.
+    h.claude.installed = "2.1.285";
+    const state = await runCheck(h.deps, NOTIFY, "schedule");
+    expect(state.attention?.kind).toBe("update-available");
+    expect(h.store.history).toHaveLength(2);
+  });
+
   it("drops a pin notice once the pinned version is installed", async () => {
     const h = harness("2.1.292", "2.1.292");
     const pinned = { ...NOTIFY, pinnedVersion: "2.1.285" };

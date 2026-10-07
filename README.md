@@ -53,7 +53,7 @@ Plugins → Claude Code updates**. A sidebar row appears by itself when:
 
 | The row reads | When | It goes when |
 | --- | --- | --- |
-| Claude Code update available | A newer version is out and auto-update is off | You dismiss the notice, or the update is installed |
+| Claude Code update available | A newer version is out and has not been installed: auto-update is off, or "Check now" found it before the schedule did | You dismiss the notice, or the update is installed |
 | Claude Code updated · 3 on an old version | An update was installed and running processes are still on the version before | You dismiss the notice, or none of them is left (where processes cannot be listed, until dismissed) |
 | Claude Code update failing | Three checks in a row have failed | You dismiss the notice, or a check works again |
 | Claude Code update needs a look | The pin or the channel does not match what is installed | You dismiss the notice, or it matches again |

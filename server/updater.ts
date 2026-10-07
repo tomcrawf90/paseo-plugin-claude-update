@@ -165,6 +165,8 @@ export async function runCheck(
         consecutiveFailures: 0,
         retryNotBefore: null,
         attention: settled(outcome) ? resolved(previous.attention) : unfailed(previous.attention),
+        // Resolved is not dismissed: if the same thing comes up again it is news again.
+        announced: settled(outcome) ? null : previous.announced,
       },
       `${outcome}: ${message}`,
     );

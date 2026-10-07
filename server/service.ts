@@ -160,6 +160,9 @@ export function startService(
       };
     },
     async dismiss() {
+      // A check that is running read the notice when it began and writes it
+      // back when it ends, so the dismissal waits for it.
+      if (running !== null) await running.catch(() => undefined);
       const state = await deps.store.readState();
       if (state.attention !== null) await deps.store.writeState({ ...state, attention: null });
     },
