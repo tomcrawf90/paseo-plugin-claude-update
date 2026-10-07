@@ -278,7 +278,78 @@ describe("failures", () => {
     const done = await runCheck(h.deps, settings, "manual", { apply: true });
     expect(done.lastOutcome).toBe("updated");
     expect(done.attention?.kind).toBe("updated");
-    expect(done.announced).toBeNull();
+    expect(done.failedInstall).toBeNull();
+    h.claude.latest = "2.1.300";
+    h.pointers.latest = "2.1.300";
+    h.claude.on.update = () => exit(1, "Error: Failed to install native update");
+    h.store.state = { ...h.store.state, attention: null };
+    expect((await runCheck(h.deps, settings, "schedule")).attention?.kind).toBe("failed");
+    expect(h.notifications).toHaveLength(4);
+  });
+
+  it("keeps the notice of a failed update through a look that works, and does not tell the failure twice", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.claude.on.update = () => exit(1, "Error: Failed to install native update");
+    const settings = settingsWith({ intervalHours: 4 });
+    await runCheck(h.deps, settings, "schedule");
+    // "Check now": the update is still out. Nothing was resolved, so the notice stays.
+    const looked = await runCheck(h.deps, settings, "manual");
+    expect(looked.lastOutcome).toBe("update-available");
+    expect(looked.attention?.kind).toBe("failed");
+    expect(looked.attention?.message).toContain("could not be updated");
+    expect(h.notifications).toHaveLength(1);
+    expect(h.store.history.map((line) => line.outcome)).toEqual(["failed"]);
+    // The retry fails the same way: the same notice, told once.
+    const again = await runCheck(h.deps, settings, "schedule");
+    expect(again.attention).toEqual(looked.attention);
+    expect(h.notifications).toHaveLength(1);
+  });
+
+  it("tells of the waiting update again once the notice of the failed one is dismissed", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const off = { ...DEFAULT_SETTINGS };
+    expect((await runCheck(h.deps, off, "schedule")).attention?.kind).toBe("update-available");
+    h.claude.on.update = () => exit(1, "Error: Failed to install native update");
+    expect((await runCheck(h.deps, off, "manual", { apply: true })).attention?.kind).toBe("failed");
+    expect((await runCheck(h.deps, off, "schedule")).attention?.kind).toBe("failed");
+    h.store.state = { ...h.store.state, attention: null };
+    const told = await runCheck(h.deps, off, "schedule");
+    expect(told.attention?.kind).toBe("update-available");
+    // Once: the next look is quiet, and a dismissal of it holds.
+    h.store.state = { ...h.store.state, attention: null };
+    expect((await runCheck(h.deps, off, "schedule")).attention).toBeNull();
+    expect(h.notifications).toHaveLength(3);
+  });
+
+  it("brings back the notice of a waiting update when checks work again after failing", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const off = { ...DEFAULT_SETTINGS };
+    expect((await runCheck(h.deps, off, "schedule")).attention?.kind).toBe("update-available");
+    h.pointers.latest = new Error("offline");
+    for (let attempt = 1; attempt <= 3; attempt += 1) await runCheck(h.deps, off, "schedule");
+    expect(h.store.state.attention?.kind).toBe("failed");
+    h.pointers.latest = "2.1.292";
+    expect((await runCheck(h.deps, off, "schedule")).attention?.kind).toBe("update-available");
+  });
+
+  it("leaves a dismissed notice of a waiting update dismissed when checks work again", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const off = { ...DEFAULT_SETTINGS };
+    await runCheck(h.deps, off, "schedule");
+    h.store.state = { ...h.store.state, attention: null };
+    h.pointers.latest = new Error("offline");
+    for (let attempt = 1; attempt <= 3; attempt += 1) await runCheck(h.deps, off, "schedule");
+    h.pointers.latest = "2.1.292";
+    expect((await runCheck(h.deps, off, "schedule")).attention).toBeNull();
+  });
+
+  it("tells of a second pin that could not be installed", async () => {
+    const h = harness("2.1.292", "2.1.292");
+    h.claude.on.install = () => exit(1, "✘ Installation failed");
+    await runCheck(h.deps, settingsWith({ pinnedVersion: "2.1.285" }), "schedule");
+    h.store.state = { ...h.store.state, attention: null };
+    expect((await runCheck(h.deps, settingsWith({ pinnedVersion: "2.1.280" }), "schedule")).attention?.kind).toBe("failed");
+    expect(h.notifications).toHaveLength(2);
   });
 
   it("tells of an update that changed nothing, and of a pin that could not be installed", async () => {

@@ -153,6 +153,10 @@ export async function runCheck(
     return { at, trigger, outcome, from, to, target: known.targetVersion ?? null, message };
   }
 
+  // A notice of an install that failed is still showing. A look that works
+  // says nothing about whether the install would, so it leaves the notice be.
+  const installFailureShowing = previous.failedInstall !== null && previous.attention?.kind === "failed";
+
   /** A success with nothing new to say: no history line, no notice. */
   function quiet(outcome: Outcome, message: string): Promise<State> {
     return save(
@@ -164,9 +168,10 @@ export async function runCheck(
         lastMessage: message,
         consecutiveFailures: 0,
         retryNotBefore: null,
-        attention: settled(outcome) ? resolved(previous.attention) : unfailed(previous.attention),
+        attention: settled(outcome) ? resolved(previous.attention) : installFailureShowing ? previous.attention : unfailed(previous.attention),
         // Resolved is not dismissed: if the same thing comes up again it is news again.
         announced: settled(outcome) ? null : previous.announced,
+        failedInstall: settled(outcome) ? null : previous.failedInstall,
       },
       `${outcome}: ${message}`,
     );
@@ -174,7 +179,9 @@ export async function runCheck(
 
   /**
    * News for the user. With a `key`, the same news is told once and is quiet
-   * after that; a change to the install has no key and is always told.
+   * after that; a change to the install has no key and is always told. While
+   * the notice of a failed install is showing, news with a key waits behind
+   * it: it is told by the first look after that notice is dismissed.
    */
   async function notable(
     outcome: Outcome,
@@ -183,7 +190,7 @@ export async function runCheck(
     extra: Partial<State>,
     change: { from: string | null; to: string | null; key: string | null },
   ): Promise<State> {
-    if (change.key !== null && previous.announced === change.key) return quiet(outcome, message);
+    if (change.key !== null && (previous.announced === change.key || installFailureShowing)) return quiet(outcome, message);
     const saved = await save(
       {
         ...previous,
@@ -196,6 +203,7 @@ export async function runCheck(
         retryNotBefore: null,
         attention: { kind, message, at },
         announced: change.key,
+        failedInstall: change.key === null ? null : previous.failedInstall,
       },
       `${outcome}: ${message}`,
       entry(outcome, message, change.from, change.to),
@@ -209,12 +217,15 @@ export async function runCheck(
    * installer (`install`) is told at once, and once: the user was expecting
    * a new version, and later failures of the same install wait for the third.
    */
-  async function fail(message: string, install: { from: string } | null = null): Promise<State> {
+  async function fail(message: string, install: { from: string; to: string } | null = null): Promise<State> {
     const failures = previous.consecutiveFailures + 1;
     const retryNotBefore = new Date(deps.now().getTime() + backoffMs(failures, settings.intervalHours * HOUR_MS)).toISOString();
-    const key = install === null ? null : `install-failed:${install.from}`;
+    const key = install === null ? null : `${install.from}:${install.to}`;
     const repeated = failures === FAILURE_ALERT_AFTER;
-    const alert = repeated || (key !== null && previous.announced !== key);
+    const alert = repeated || (key !== null && previous.failedInstall !== key);
+    // The failure notice takes the place of news that was still showing. That
+    // news is forgotten as told, so that it is told again once checks work.
+    const displaced = alert && previous.attention !== null && previous.attention.kind !== "failed";
     const notice = repeated
       ? `Claude Code update check has failed ${failures} times in a row. Last error: ${message}`
       : `Claude Code could not be updated. ${message}`;
@@ -228,7 +239,8 @@ export async function runCheck(
         consecutiveFailures: failures,
         retryNotBefore,
         attention: alert ? { kind: "failed", message: notice, at } : previous.attention,
-        announced: key ?? previous.announced,
+        announced: displaced ? null : previous.announced,
+        failedInstall: key ?? previous.failedInstall,
       },
       `failed (${failures} in a row, next not before ${retryNotBefore}): ${message}`,
       entry("failed", message, known.installedVersion ?? null, null),
@@ -273,12 +285,12 @@ export async function runCheck(
     }
     options.onPhase?.("installing");
     const result = await runInstall(deps.run, claudePath, pin, deps.env);
-    if (result.code !== 0) return fail(describeFailure(`claude install ${pin}`, result), { from: installed });
+    if (result.code !== 0) return fail(describeFailure(`claude install ${pin}`, result), { from: installed, to: pin });
     const after = await readInstalledVersion(deps.run, claudePath, deps.env);
-    if ("error" in after) return fail(after.error, { from: installed });
+    if ("error" in after) return fail(after.error, { from: installed, to: pin });
     known.installedVersion = after.version;
     if (after.version !== pin) {
-      return fail(`claude install ${pin} exited 0 but the installed version is ${after.version}: ${outputTail(result)}`, { from: installed });
+      return fail(`claude install ${pin} exited 0 but the installed version is ${after.version}: ${outputTail(result)}`, { from: installed, to: pin });
     }
     return notable(
       "pin-applied",
@@ -328,14 +340,14 @@ export async function runCheck(
 
   options.onPhase?.("installing");
   const result = await runUpdate(deps.run, claudePath, deps.env);
-  if (result.code !== 0) return fail(describeFailure("claude update", result), { from: installed });
+  if (result.code !== 0) return fail(describeFailure("claude update", result), { from: installed, to: target });
   const after = await readInstalledVersion(deps.run, claudePath, deps.env);
-  if ("error" in after) return fail(after.error, { from: installed });
+  if ("error" in after) return fail(after.error, { from: installed, to: target });
   known.installedVersion = after.version;
   // The exit code alone is not proof: with updates disabled by policy the CLI
   // prints why and still exits 0.
   if (compareVersions(after.version, installed) <= 0) {
-    return fail(`claude update exited 0 but the installed version is still ${after.version}: ${outputTail(result)}`, { from: installed });
+    return fail(`claude update exited 0 but the installed version is still ${after.version}: ${outputTail(result)}`, { from: installed, to: target });
   }
   // The update is done; counting what is still on the old version only
   // decorates the message and must not stop it being recorded.

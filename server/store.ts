@@ -19,6 +19,8 @@ export interface State {
   attention: Attention | null;
   /** What was last announced, so the same news is not announced again. */
   announced: string | null;
+  /** The failed install that was last told (`from:to`), so its retries are not told again. Absent in a 0.2.0 file, which reads as null. */
+  failedInstall: string | null;
 }
 
 export const EMPTY_STATE: State = {
@@ -34,6 +36,7 @@ export const EMPTY_STATE: State = {
   previousVersion: null,
   attention: null,
   announced: null,
+  failedInstall: null,
 };
 
 export interface Store {

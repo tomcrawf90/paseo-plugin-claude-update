@@ -7,7 +7,8 @@ All notable changes to this plugin are listed here. Versions follow [semantic ve
 - No sidebar row after an update, and none for processes still on an older version: those are listed on the status page only. An update that went in is on the status page and in the history, with a macOS notification if those are on; it no longer raises a toast.
 - The row is there only for something to act on, and its title fits on one line (20 characters at most): "Claude update ready", "Claude update failed", "Claude pin mismatch", "Claude channel issue".
 - No row for an update that the next scheduled check installs by itself (auto-update on, schedule on), such as one found by "Check now".
-- An update that was tried and did not go in is told at once, in the row, on the status page and by macOS notification. Before, it waited for the third failure in a row, as a failed check still does.
+- An update that was tried and did not go in is told at once, in the row, on the status page and by macOS notification. Before, it waited for the third failure in a row, as a failed check still does. The notice stays through a "Check now" that works, until it is dismissed or the update goes in.
+- A notice of a waiting update that was replaced by a failure notice comes back when checks work again.
 - The status RPC reports `autoInstall`: whether the schedule installs what it finds.
 
 ## 0.2.0 - unreleased
