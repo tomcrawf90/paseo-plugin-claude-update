@@ -7,6 +7,13 @@ const LIST_TIMEOUT_MS = 15_000;
 /** `<pid> <weekday> <month> <day> <time> <year> <command and environment>`, as macOS `ps` prints `lstart`. */
 const PS_LINE = /^\s*(\d+)\s+(\w{3}\s+\w{3}\s+\d+\s+[\d:]+\s+\d{4})\s+(.*)$/;
 const VERSION_PATH = /\/claude\/versions\/(\d+\.\d+\.\d+)/;
+/**
+ * The program at the start of a command line when it is `claude`: bare, or at
+ * the end of a path. `ps` does not quote, so a home directory with a space in
+ * it puts spaces in the path; the path may hold them but not a `=` or a ` -`,
+ * which would mean the match had run on into the arguments or the environment.
+ */
+const CLAUDE_PROGRAM = /^(?:claude|\/(?:(?!\s-)[^=])*?\/claude)(?=\s|$)/;
 const AGENT_ID = /\sPASEO_AGENT_ID=(\S+)/;
 
 interface Candidate {
@@ -16,11 +23,20 @@ interface Candidate {
   agentId: string | null;
   /** A version named on the command line, for a process whose binary can no longer be read. */
   versionHint: string | null;
+  /** The program path has a space in it, so where it ends was a guess; believed only once `lsof` agrees. */
+  spaced: boolean;
 }
 
-function isClaudeCommand(command: string): boolean {
-  const program = command.split(/\s+/, 1)[0] ?? "";
-  return program === "claude" || program.endsWith("/claude") || VERSION_PATH.test(program);
+/**
+ * The length of the program at the start of a Claude Code command line, or
+ * null when the command is something else. The versioned binary is looked for
+ * first: it is the one path that cannot be anything but Claude Code.
+ */
+function claudeProgramLength(command: string): number | null {
+  const versioned = new RegExp(`^(?:(?!\\s-)[^=])*?${VERSION_PATH.source}(?=\\s|$)`).exec(command);
+  if (versioned) return versioned[0].length;
+  const launcher = CLAUDE_PROGRAM.exec(command);
+  return launcher ? launcher[0].length : null;
 }
 
 /**
@@ -34,16 +50,19 @@ export function parseProcessList(text: string): Candidate[] {
     const match = PS_LINE.exec(line);
     if (!match) continue;
     const command = match[3] ?? "";
-    if (!isClaudeCommand(command)) continue;
+    const programLength = claudeProgramLength(command);
+    if (programLength === null) continue;
+    const argumentsText = command.slice(programLength);
     const started = Date.parse(match[2] ?? "");
     const agentId = AGENT_ID.exec(command)?.[1] ?? null;
-    const isDaemon = /^\S+\s+daemon\s+run(\s|$)/.test(command);
+    const isDaemon = /^\s+daemon\s+run(\s|$)/.test(argumentsText);
     candidates.push({
       pid: Number(match[1]),
       startedAt: Number.isNaN(started) ? null : new Date(started).toISOString(),
       kind: agentId !== null ? "agent" : isDaemon ? "daemon" : "other",
       agentId,
       versionHint: VERSION_PATH.exec(command)?.[1] ?? null,
+      spaced: /\s/.test(command.slice(0, programLength)),
     });
   }
   return candidates;
@@ -88,14 +107,16 @@ export async function listClaudeProcesses(run: Runner, platform: NodeJS.Platform
   const binaries = parseOpenBinaries(open.stdout);
   return {
     supported: true,
-    processes: candidates.map((candidate) => ({
-      pid: candidate.pid,
-      version: binaries.get(candidate.pid) ?? candidate.versionHint,
-      kind: candidate.kind,
-      agentId: candidate.agentId,
-      title: null,
-      startedAt: candidate.startedAt,
-    })),
+    processes: candidates
+      .filter((candidate) => !candidate.spaced || binaries.has(candidate.pid))
+      .map((candidate) => ({
+        pid: candidate.pid,
+        version: binaries.get(candidate.pid) ?? candidate.versionHint,
+        kind: candidate.kind,
+        agentId: candidate.agentId,
+        title: null,
+        startedAt: candidate.startedAt,
+      })),
   };
 }
 

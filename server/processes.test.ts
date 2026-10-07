@@ -26,6 +26,39 @@ describe("parseProcessList", () => {
   });
 });
 
+describe("a home directory with a space in it", () => {
+  const SPACED = [
+    "  501 Tue Oct  6 14:49:39 2026     /Users/Tom Smith/.local/bin/claude --output-format stream-json PASEO_AGENT_ID=agent-1 API_KEY=do-not-leak",
+    "  502 Tue Oct  6 14:49:40 2026     /Users/Tom Smith/.local/bin/claude daemon run --json-path /x HOME=/Users/Tom Smith",
+    "  503 Tue Oct  6 14:49:41 2026     /Users/Tom Smith/.local/share/claude/versions/2.1.280 --resume abc PASEO_AGENT_ID=agent-3",
+    "  504 Tue Oct  6 14:49:42 2026     /usr/bin/vim /Users/Tom Smith/notes/claude",
+    "  505 Tue Oct  6 14:49:43 2026     /bin/zsh -l CLAUDE_CODE_EXECPATH=/Users/Tom Smith/.local/bin/claude PASEO_AGENT_ID=agent-1",
+    "  506 Tue Oct  6 14:49:44 2026     /usr/bin/node /srv/tool.js SHELL=/bin/zsh CLAUDE_CODE_EXECPATH=/Users/Tom Smith/.local/bin/claude",
+  ].join("\n");
+  const LSOF = "p501\nn/Users/Tom Smith/.local/share/claude/versions/2.1.285\np502\nn/Users/Tom Smith/.local/share/claude/versions/2.1.285\np503\nn/Users/Tom Smith/.local/share/claude/versions/2.1.280\np504\nn/usr/bin/vim\n";
+
+  it("still finds the launcher, the daemon and a versioned binary", () => {
+    const found = parseProcessList(SPACED);
+    expect(found.map((candidate) => [candidate.pid, candidate.kind, candidate.agentId])).toEqual([
+      [501, "agent", "agent-1"],
+      [502, "daemon", null],
+      [503, "agent", "agent-3"],
+      [504, "other", null],
+    ]);
+    expect(found[2]?.versionHint).toBe("2.1.280");
+    expect(JSON.stringify(found)).not.toContain("do-not-leak");
+  });
+
+  it("drops a guess that lsof does not confirm", async () => {
+    const listed = await listClaudeProcesses(async (file) => ok(file === "ps" ? SPACED : LSOF), "darwin");
+    expect(listed.processes.map((process) => [process.pid, process.version])).toEqual([
+      [501, "2.1.285"],
+      [502, "2.1.285"],
+      [503, "2.1.280"],
+    ]);
+  });
+});
+
 describe("parseOpenBinaries", () => {
   it("maps each pid to the version of the binary it has open", () => {
     const text = "p4377\nn/Users/u/.local/share/claude/versions/2.1.285\nn/usr/lib/dyld\np38507\nn/Users/u/.local/share/claude/versions/2.1.280\np74223\n";
