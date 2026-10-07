@@ -83,10 +83,13 @@ describe("the sidebar row", () => {
     row.show(AVAILABLE);
     await row.settled();
     expect(reports).toHaveLength(1);
+    // The old row is still there, alone: nothing was added beside it.
+    expect(fake.rows).toEqual([BASE]);
     fake.failRemove = false;
     row.show(UPDATED);
     await row.settled();
-    expect(fake.rows.at(-1)).toEqual(UPDATED);
+    expect(fake.rows).toEqual([UPDATED]);
+    expect(fake.most).toBe(1);
   });
 
   it("changes nothing once disposed", async () => {

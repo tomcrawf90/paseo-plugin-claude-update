@@ -21,8 +21,9 @@ const key = (row: SidebarRow): string => `${row.title}|${row.icon}`;
  * Keeps one sidebar row and changes its title and icon by taking the row away
  * and adding it again under the same id. Changes run one at a time, each
  * waiting for the old row to be gone, so two changes close together can never
- * leave two rows. If a change fails the plain row is put back, and the next
- * `show` tries again.
+ * leave two rows. If the old row cannot be removed it stays as it is; if the
+ * new one cannot be added the plain row is put back. Either way the failure
+ * is reported and the next `show` tries again.
  */
 export function createSidebarRow(
   add: (row: SidebarRow) => Remover,
@@ -46,14 +47,24 @@ export function createSidebarRow(
     // queue may have replaced the row since.
     const target = wanted;
     const old = remove;
+    if (old !== null) {
+      try {
+        await old();
+      } catch (error) {
+        // The old row is still there: add nothing beside it. Its remover is
+        // kept, so the next `show` tries the removal again.
+        report("[claude-update] could not remove the sidebar row:", error);
+        return;
+      }
+    }
     remove = null;
     shown = null;
+    if (disposed) return;
     try {
-      if (old !== null) await old();
-      if (!disposed) put(target);
+      put(target);
     } catch (error) {
+      // The old row is gone and the new one was refused: put the plain one back.
       report("[claude-update] could not change the sidebar row:", error);
-      if (disposed || remove !== null) return;
       try {
         put(base);
       } catch (again) {
