@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>claude-update: Paseo Cafe listing preview</title>
+<style>
+  body { font: 15px/1.5 -apple-system, system-ui, sans-serif; max-width: 860px; margin: 32px auto; padding: 0 20px; color: #1c1c1e; }
+  h1 { font-size: 26px; margin-bottom: 4px; } h2 { font-size: 18px; margin-top: 32px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  .note { background: #fff6d6; border: 1px solid #e6c860; padding: 10px 14px; border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; } th, td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid #eee; }
+  th { width: 190px; color: #555; font-weight: 600; }
+  code, pre { font: 13px ui-monospace, Menlo, monospace; background: #f4f4f5; border-radius: 4px; } code { padding: 1px 4px; } pre { padding: 10px; }
+  .shot { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; margin: 14px 0; }
+  .slot { border: 2px dashed #bbb; border-radius: 8px; min-height: 120px; display: flex; align-items: center; justify-content: center; color: #777; text-align: center; padding: 10px; }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<h1>claude-update</h1>
+<p>What the Paseo Cafe listing would be built from, on one page. Not published; prepared 2026-10-07.</p>
+<p class="note"><strong>No screenshots exist yet.</strong> The plugin has not been opened in the Paseo app, so the
+slots below are empty on purpose rather than filled with mock-ups. Capture each one after installing, save it in
+<code>images/</code>, and replace the slot with <code>&lt;img src="../images/…"&gt;</code> so the image sits beside its label.</p>
+
+<h2>Listing fields</h2>
+<table>
+<tr><th>Name</th><td>claude-update</td></tr>
+<tr><th>Description</th><td>Paseo plugin: keeps the Claude Code CLI up to date on the daemon host, where its own updater never runs</td></tr>
+<tr><th>Version</th><td>0.1.0</td></tr>
+<tr><th>npm package</th><td><code>paseo-plugin-claude-update</code> (proposed, not published)</td></tr>
+<tr><th>Repository</th><td><code>tomcrawf90/paseo-plugin-claude-update</code> (proposed, does not exist yet)</td></tr>
+<tr><th>Author, licence</th><td>Tom Crawford, MIT</td></tr>
+<tr><th>Requires</th><td>Paseo &gt;=0.10.3</td></tr>
+<tr><th>Categories</th><td>automation, monitoring</td></tr>
+<tr><th>Platforms</th><td>macOS</td></tr>
+<tr><th>Health badges</th><td>manifest valid, README, LICENSE, tests, typecheck script</td></tr>
+</table>
+
+<h2>Install notes (quoted from the README)</h2>
+<pre>paseo plugin install npm:paseo-plugin-claude-update</pre>
+
+<h2>Caveats</h2>
+<ul>
+<li>Installs Claude Code updates automatically about 30 seconds after first start unless set to "Only tell me".</li>
+<li>Supports Claude Code's native installer only, not Homebrew, WinGet or npm installs.</li>
+<li>Tested on macOS only; listing old processes and desktop notifications are macOS only.</li>
+<li>Running agents keep their old Claude Code version until you restart them; nothing is restarted for you.</li>
+<li>Follows Claude Code's own autoUpdatesChannel; set that to stable yourself to follow the stable channel.</li>
+<li>Reads process environments on the host to match processes to agents; only the Paseo agent id is used.</li>
+</ul>
+
+<h2>Screenshots to capture</h2>
+<div class="shot"><div class="slot">images/status.png<br>not captured</div><div><strong>Status page after an update.</strong> Sidebar → Claude Code updates. Shows the notice, installed and target version, last and next check, the rollback command, processes still on an older version, and history.</div></div>
+<div class="shot"><div class="slot">images/settings.png<br>not captured</div><div><strong>Settings screen.</strong> Settings → Plugins → Claude Code updates. Shows the schedule switch, mode, channel, notifications, interval, pinned version and path.</div></div>
+<div class="shot"><div class="slot">images/sidebar.png<br>not captured</div><div><strong>Sidebar row carrying news.</strong> The row reads "Claude Code updated" with a tick, or "Claude Code update failing" with a warning sign.</div></div>
+<div class="shot"><div class="slot">images/status-compact.png<br>not captured</div><div><strong>Status page in a narrow window or on a phone, in a dark theme.</strong> Checks the compact layout and that every text colour comes from the theme.</div></div>
+</body>
+</html>
