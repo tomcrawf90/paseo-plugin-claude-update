@@ -80,6 +80,14 @@ describe("checkRelease", () => {
     expect(checkRelease({ version: "0.2.1", changelog: DATED.replace("2026-10-08", "2026-13-40") })[0]).toMatch(/dated "2026-13-40"/);
     expect(checkRelease({ version: "0.2.1", changelog: DATED.replace("## 0.2.0", "## 0.2.1") })[0]).toMatch(/two entries/);
     expect(checkRelease({ version: "0.2.1", changelog: `${DATED}\n## Unreleased\n` })[0]).toMatch(/must be the first entry/);
+    expect(checkRelease({ version: "0.2.1", changelog: WITH_UNRELEASED.replace("## 0.2.1", "## Unreleased\n\n## 0.2.1") })[0]).toMatch(/there is only one/);
+  });
+
+  it("accepts an older version that was not published, and refuses to tag one", () => {
+    const skipped = DATED.replace("0.2.0 - unreleased", "0.2.0 - not published");
+    expect(checkRelease({ version: "0.2.1", changelog: skipped, tag: "v0.2.1" })).toEqual([]);
+    expect(checkRelease({ version: "0.2.1", changelog: DATED.replace("2026-10-08", "not published"), tag: "v0.2.1" })[0]).toMatch(/still marked not published/);
+    expect(() => stampChangelog({ changelog: DATED.replace("2026-10-08", "not published"), version: "0.2.1", date: "2026-10-09" })).toThrow(/already marked not published/);
   });
 
   it("fails on a version that is not a release", () => {
@@ -107,6 +115,7 @@ describe("nextVersion", () => {
   it("takes an exact version that is not lower", () => {
     expect(nextVersion("0.2.1", "0.2.1")).toBe("0.2.1");
     expect(nextVersion("0.2.1", "0.10.0")).toBe("0.10.0");
+    expect(nextVersion("0.2.1", "00.2.01")).toBe("0.2.1");
     expect(() => nextVersion("0.2.1", "0.2.0")).toThrow(/lower than/);
     expect(() => nextVersion("0.10.0", "0.9.9")).toThrow(/lower than/);
   });
@@ -132,7 +141,7 @@ describe("stampChangelog", () => {
   });
 
   it("refuses a version that was already released", () => {
-    expect(() => stampChangelog({ changelog: DATED, version: "0.2.1", date: "2026-10-09" })).toThrow(/already dated 2026-10-08/);
+    expect(() => stampChangelog({ changelog: DATED, version: "0.2.1", date: "2026-10-09" })).toThrow(/already marked 2026-10-08/);
   });
 
   it("refuses when there is nothing to release", () => {
@@ -211,6 +220,7 @@ describe("in a copy of a repository", () => {
     expect(await repo.cli("check", "--tag", "v0.2.1")).toMatchObject({ code: 0 });
     expect(await repo.cli("check", "--tag", "v0.2.2")).toMatchObject({ code: 1, stderr: expect.stringContaining('expected "v0.2.1"') });
     expect(await repo.cli("check", "--tag")).toMatchObject({ code: 1 });
+    for (const args of [["--tag=v0.2.1"], ["v0.2.1"], ["--tag", "v0.2.1", "extra"]]) expect(await repo.cli("check", ...args), args.join(" ")).toMatchObject({ code: 1, stderr: expect.stringContaining("check takes nothing or") });
     expect((await repo.cli("notes")).stdout).toBe("- Second.\n\n```bash\npaseo plugin install npm:paseo-plugin-claude-update@0.2.1\n```\n");
   });
 

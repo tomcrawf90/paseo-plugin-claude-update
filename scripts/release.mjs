@@ -17,11 +17,14 @@ import { fileURLToPath } from "node:url";
 const VERSION = /^(\d+)\.(\d+)\.(\d+)$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const UNRELEASED = "unreleased";
+// A version that was finished but never reached npm: kept in the changelog, never tagged.
+const NOT_PUBLISHED = "not published";
 const REGISTRY = "https://registry.npmjs.org";
 
 /**
  * The `## ` entries of a changelog, top first. An entry is `## x.y.z - <date>`,
- * `## x.y.z - unreleased` while it is being worked on, or `## Unreleased` for
+ * `## x.y.z - unreleased` while it is being worked on, `## x.y.z - not published`
+ * for a version that was skipped, or `## Unreleased` for
  * changes that have no version yet.
  */
 export function parseChangelog(text) {
@@ -70,12 +73,12 @@ export function checkRelease({ version, changelog, tag }) {
   }
   const versioned = entries.filter((entry) => entry.version !== null);
   const top = versioned[0];
-  if (entries.findIndex((entry) => entry.version === null) > 0) problems.push('CHANGELOG.md: "## Unreleased" must be the first entry');
+  if (entries.some((entry, index) => entry.version === null && index > 0)) problems.push('CHANGELOG.md: "## Unreleased" must be the first entry, and there is only one');
   const seen = new Set();
   for (const entry of versioned) {
     if (seen.has(entry.version)) problems.push(`CHANGELOG.md: ${entry.version} has two entries`);
     seen.add(entry.version);
-    if (entry.date !== UNRELEASED && !realDate(entry.date)) problems.push(`CHANGELOG.md: ${entry.version} is dated "${entry.date}"; use YYYY-MM-DD or "unreleased"`);
+    if (![UNRELEASED, NOT_PUBLISHED].includes(entry.date) && !realDate(entry.date)) problems.push(`CHANGELOG.md: ${entry.version} is dated "${entry.date}"; use YYYY-MM-DD, "unreleased" or "not published"`);
   }
   if (top === undefined) {
     problems.push(`CHANGELOG.md: no entry for ${version}`);
@@ -86,7 +89,7 @@ export function checkRelease({ version, changelog, tag }) {
   }
   if (tag !== undefined) {
     if (tag !== `v${version}`) problems.push(`tag "${tag}" does not match package.json, which is at ${version} (expected "v${version}")`);
-    if (top?.version === version && top.date === UNRELEASED) problems.push(`CHANGELOG.md: ${version} is still marked unreleased; date it before tagging (npm run release:prepare -- ${version})`);
+    if (top?.version === version && [UNRELEASED, NOT_PUBLISHED].includes(top.date)) problems.push(`CHANGELOG.md: ${version} is still marked ${top.date}; date it before tagging (npm run release:prepare -- ${version})`);
     const pending = entries.find((entry) => entry.version === null);
     if (pending !== undefined && pending.body !== "") problems.push('CHANGELOG.md: "## Unreleased" has changes that are not in the tagged version');
   }
@@ -112,7 +115,7 @@ export function nextVersion(current, bump) {
   if (wanted === null) throw new Error(`expected patch, minor, major or a version such as 1.2.3, got "${bump ?? ""}"`);
   const order = wanted.slice(1).map(Number).map((part, index) => part - [major, minor, patch][index]).find((difference) => difference !== 0) ?? 0;
   if (order < 0) throw new Error(`${bump} is lower than the current version ${current}`);
-  return bump;
+  return wanted.slice(1).map(Number).join(".");
 }
 
 /**
@@ -124,7 +127,7 @@ export function stampChangelog({ changelog, version, date }) {
   if (!realDate(date)) throw new Error(`"${date}" is not a date (YYYY-MM-DD)`);
   const entries = parseChangelog(changelog);
   const existing = entries.find((entry) => entry.version === version);
-  if (existing !== undefined && existing.date !== UNRELEASED) throw new Error(`CHANGELOG.md: ${version} is already dated ${existing.date}; a released version is never reused`);
+  if (existing !== undefined && existing.date !== UNRELEASED) throw new Error(`CHANGELOG.md: ${version} is already marked ${existing.date}; a version is never reused`);
   const pending = entries.find((entry) => entry.version === null);
   if (existing !== undefined && pending !== undefined && pending.body !== "") throw new Error(`CHANGELOG.md: both "## Unreleased" and "## ${version} - unreleased" have changes; merge them into one entry`);
   const target = existing ?? pending;
@@ -186,8 +189,10 @@ async function main([command, ...rest]) {
   const read = (name) => readFileSync(join(root, name), "utf8");
   const manifest = () => JSON.parse(read("package.json"));
   if (command === "check") {
-    const tagAt = rest.indexOf("--tag");
-    const tag = tagAt === -1 ? undefined : (rest[tagAt + 1] ?? "");
+    // Anything but nothing or "--tag <tag>" is refused, so that a mistyped
+    // flag cannot pass as the looser check.
+    if (rest.length > 0 && (rest[0] !== "--tag" || rest.length > 2)) throw new Error(`check takes nothing or "--tag vX.Y.Z", got "${rest.join(" ")}"`);
+    const tag = rest.length === 0 ? undefined : (rest[1] ?? "");
     const { version } = manifest();
     const problems = checkRelease({ version, changelog: read("CHANGELOG.md"), tag });
     if (problems.length > 0) throw new Error(problems.join("\n"));
