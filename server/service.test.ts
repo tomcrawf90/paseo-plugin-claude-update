@@ -96,6 +96,66 @@ describe("the schedule", () => {
     expect((await s.status()).checking).toBe(false);
   });
 
+  it("reports a scheduled install as running, since when, and when it reaches the updater", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    let release: () => void = () => {};
+    let reached: () => void = () => {};
+    const updating = new Promise<void>((resolve) => (reached = resolve));
+    h.claude.on.update = () =>
+      new Promise((resolve) => {
+        reached();
+        release = () => {
+          h.claude.installed = "2.1.292";
+          resolve(ok("Successfully updated"));
+        };
+      });
+    const s = start(h, settingsWith(), { minimumGapMs: 0 });
+    expect((await s.status()).activity).toBeNull();
+    const started = new Date(h.clock.now).toISOString();
+    const tick = s.tick();
+    await updating;
+    h.clock.now += 12_000;
+    const during = await s.status();
+    expect(during.checking).toBe(true);
+    expect(during.activity).toEqual({ phase: "installing", trigger: "schedule", startedAt: started });
+    release();
+    await tick;
+    const after = await s.status();
+    expect(after.checking).toBe(false);
+    expect(after.activity).toBeNull();
+    expect(after.lastOutcome).toBe("updated");
+  });
+
+  it("reports a manual look as running from the moment it is asked for", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const s = start(h, settingsWith({ mode: "notify" }));
+    // No waiting: the status is read right behind the request, as the page does.
+    const check = s.check("manual", false);
+    const during = await s.status();
+    expect(during.activity).toMatchObject({ phase: "checking", trigger: "manual" });
+    await check;
+    expect((await s.status()).activity).toBeNull();
+    expect(h.claude.calls).toEqual(["--version"]);
+  });
+
+  it("reports nothing running after a check that could not start", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const s = start(h, null);
+    await expect(s.check("manual", true)).rejects.toThrow(/settings are invalid/);
+    expect((await s.status()).activity).toBeNull();
+    expect((await s.status()).checking).toBe(false);
+  });
+
+  it("reports nothing running after a check that threw", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.store.writeState = async () => {
+      throw new Error("disk full");
+    };
+    const s = start(h, settingsWith());
+    await expect(s.check("manual", true)).rejects.toThrow(/disk full/);
+    expect((await s.status()).activity).toBeNull();
+  });
+
   it("does not hammer when the state cannot be saved", async () => {
     const h = harness("2.1.292", "2.1.292");
     h.store.writeState = async () => {

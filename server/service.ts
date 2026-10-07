@@ -1,7 +1,7 @@
 import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 
 import type { UpdateSettings } from "../shared/settings";
-import type { ClaudeProcess, Status } from "../shared/status";
+import type { Activity, ClaudeProcess, Status } from "../shared/status";
 import { listClaudeProcesses, staleProcesses } from "./processes";
 import type { State } from "./store";
 import { isDue, nextCheckAt, runCheck, type Trigger, type UpdaterDependencies } from "./updater";
@@ -62,6 +62,9 @@ export function startService(
   const minimumGapMs = options.minimumGapMs ?? 15 * 60_000;
   const platform = options.platform ?? process.platform;
   let running: Promise<State> | null = null;
+  // What the status reports as running. Set as soon as a check is asked for,
+  // before its settings are read, so a status read right behind it sees it.
+  let activity: Activity | null = null;
   let lastScheduledAt: number | null = null;
   let stopped = false;
 
@@ -72,8 +75,16 @@ export function startService(
    */
   function start(settings: UpdateSettings, trigger: Trigger, apply: boolean): Promise<State> {
     if (running !== null) return running;
-    const check = runCheck(deps, settings, trigger, { apply }).finally(() => {
+    activity = { phase: "checking", trigger, startedAt: activity?.startedAt ?? deps.now().toISOString() };
+    const options = {
+      apply,
+      onPhase(phase: Activity["phase"]) {
+        if (activity !== null) activity = { ...activity, phase };
+      },
+    };
+    const check = runCheck(deps, settings, trigger, options).finally(() => {
       running = null;
+      activity = null;
     });
     running = check;
     return check;
@@ -103,10 +114,16 @@ export function startService(
     tick,
     async check(trigger, apply) {
       if (running !== null) return running;
-      const settings = await readSettings();
-      if (settings === null) throw new Error("The plugin settings are invalid; reset them in Settings.");
-      if (running !== null) return running;
-      return start(settings, trigger, apply);
+      activity ??= { phase: "checking", trigger, startedAt: deps.now().toISOString() };
+      try {
+        const settings = await readSettings();
+        if (settings === null) throw new Error("The plugin settings are invalid; reset them in Settings.");
+        if (running !== null) return running;
+        return start(settings, trigger, apply);
+      } finally {
+        // Nothing started (the settings could not be read): nothing is running.
+        if (running === null) activity = null;
+      }
     },
     async status(paseo) {
       const [state, settings, history, listed, titles] = await Promise.all([
@@ -134,7 +151,8 @@ export function startService(
         previousVersion: state.previousVersion,
         rollbackCommand: state.previousVersion === null ? null : `claude install ${state.previousVersion}`,
         attention: state.attention,
-        checking: running !== null,
+        checking: activity !== null,
+        activity,
         staleProcesses: stale,
         processListSupported: listed.supported,
         history,

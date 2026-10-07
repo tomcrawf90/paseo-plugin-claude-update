@@ -43,6 +43,14 @@ export const processSchema = z.object({
 });
 export type ClaudeProcess = z.infer<typeof processSchema>;
 
+/** A check that is running right now: who started it, when, and whether it has got as far as installing. */
+export const activitySchema = z.object({
+  phase: z.enum(["checking", "installing"]),
+  trigger: z.enum(["schedule", "manual"]),
+  startedAt: z.string(),
+});
+export type Activity = z.infer<typeof activitySchema>;
+
 export const statusSchema = z.object({
   claudePath: z.string().nullable(),
   installedVersion: z.string().nullable(),
@@ -59,6 +67,8 @@ export const statusSchema = z.object({
   rollbackCommand: z.string().nullable(),
   attention: attentionSchema.nullable(),
   checking: z.boolean(),
+  /** Null when nothing is running; `checking` is true exactly when this is set. */
+  activity: activitySchema.nullable(),
   staleProcesses: z.array(processSchema),
   processListSupported: z.boolean(),
   history: z.array(historyEntrySchema),

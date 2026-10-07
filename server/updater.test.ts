@@ -291,6 +291,76 @@ describe("failures", () => {
   });
 });
 
+describe("a notice once the install is where it should be", () => {
+  const NOTIFY = { ...DEFAULT_SETTINGS };
+
+  it("drops an \"available\" notice when the update was installed some other way", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    expect((await runCheck(h.deps, NOTIFY, "schedule")).attention?.kind).toBe("update-available");
+    // Someone ran the updater in a terminal.
+    h.claude.installed = "2.1.292";
+    const state = await runCheck(h.deps, NOTIFY, "schedule");
+    expect(state.lastOutcome).toBe("up-to-date");
+    expect(state.attention).toBeNull();
+    expect(h.claude.calls).toEqual(["--version", "--version"]);
+  });
+
+  it("keeps an \"available\" notice while the update is still waiting", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    await runCheck(h.deps, NOTIFY, "schedule");
+    const state = await runCheck(h.deps, NOTIFY, "schedule");
+    expect(state.lastOutcome).toBe("update-available");
+    expect(state.attention?.kind).toBe("update-available");
+  });
+
+  it("does not bring back a dismissed notice for the same version", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    await runCheck(h.deps, NOTIFY, "schedule");
+    h.store.state = { ...h.store.state, attention: null };
+    expect((await runCheck(h.deps, NOTIFY, "schedule")).attention).toBeNull();
+    // A newer version is news again.
+    h.pointers.latest = "2.1.300";
+    expect((await runCheck(h.deps, NOTIFY, "schedule")).attention?.kind).toBe("update-available");
+  });
+
+  it("drops a pin notice once the pinned version is installed", async () => {
+    const h = harness("2.1.292", "2.1.292");
+    const pinned = { ...NOTIFY, pinnedVersion: "2.1.285" };
+    expect((await runCheck(h.deps, pinned, "schedule")).attention?.kind).toBe("pin-mismatch");
+    h.claude.installed = "2.1.285";
+    const state = await runCheck(h.deps, pinned, "schedule");
+    expect(state.lastOutcome).toBe("pinned");
+    expect(state.attention).toBeNull();
+  });
+});
+
+describe("the phase a check reports", () => {
+  it("says it is installing just before the updater runs, and not at all for a look", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const seen: string[] = [];
+    const onPhase = (phase: string) => seen.push(`${phase} after ${h.claude.calls.join(",")}`);
+    await runCheck(h.deps, settingsWith(), "manual", { onPhase });
+    expect(seen).toEqual([]);
+    await runCheck(h.deps, settingsWith(), "manual", { apply: true, onPhase });
+    expect(seen).toEqual(["installing after --version,--version"]);
+  });
+
+  it("says it is installing before a pin is applied", async () => {
+    const h = harness("2.1.292", "2.1.292");
+    const seen: string[] = [];
+    await runCheck(h.deps, settingsWith({ pinnedVersion: "2.1.285" }), "schedule", { onPhase: (phase) => seen.push(phase) });
+    expect(seen).toEqual(["installing"]);
+    expect(h.claude.calls).toEqual(["--version", "install 2.1.285", "--version"]);
+  });
+
+  it("does not say so when there is nothing to install", async () => {
+    const h = harness("2.1.292", "2.1.292");
+    const seen: string[] = [];
+    await runCheck(h.deps, settingsWith(), "manual", { apply: true, onPhase: (phase) => seen.push(phase) });
+    expect(seen).toEqual([]);
+  });
+});
+
 describe("pinning", () => {
   it("does nothing when the pinned version is installed, and never reads the channel", async () => {
     const h = harness("2.1.285", "2.1.292");

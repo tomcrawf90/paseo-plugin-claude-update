@@ -74,6 +74,27 @@ export interface CheckOptions {
    * manual check only looks, and only the schedule installs, in `auto` mode.
    */
   apply?: boolean;
+  /** Told once, just before the CLI is run to change the install. */
+  onPhase?(phase: "installing"): void;
+}
+
+/** The install is where it should be: nothing is left to do about an earlier notice. */
+function settled(outcome: Outcome): boolean {
+  return outcome === "up-to-date" || outcome === "pinned";
+}
+
+/** A failure notice is stale once a check works again. */
+function unfailed(attention: Attention | null): Attention | null {
+  return attention?.kind === "failed" ? null : attention;
+}
+
+/**
+ * What is left of a notice once the install is where it should be: only the
+ * note that an update happened, which the user dismisses. An "available" or
+ * mismatch notice was resolved somewhere else, such as a terminal.
+ */
+function resolved(attention: Attention | null): Attention | null {
+  return attention?.kind === "updated" ? attention : null;
 }
 
 /**
@@ -143,8 +164,7 @@ export async function runCheck(
         lastMessage: message,
         consecutiveFailures: 0,
         retryNotBefore: null,
-        // A failure notice is stale once a check works again.
-        attention: previous.attention?.kind === "failed" ? null : previous.attention,
+        attention: settled(outcome) ? resolved(previous.attention) : unfailed(previous.attention),
       },
       `${outcome}: ${message}`,
     );
@@ -239,6 +259,7 @@ export async function runCheck(
         { from: installed, to: null, key: `pin-mismatch:${pin}:${installed}` },
       );
     }
+    options.onPhase?.("installing");
     const result = await runInstall(deps.run, claudePath, pin, deps.env);
     if (result.code !== 0) return fail(describeFailure(`claude install ${pin}`, result));
     const after = await readInstalledVersion(deps.run, claudePath, deps.env);
@@ -293,6 +314,7 @@ export async function runCheck(
     );
   }
 
+  options.onPhase?.("installing");
   const result = await runUpdate(deps.run, claudePath, deps.env);
   if (result.code !== 0) return fail(describeFailure("claude update", result));
   const after = await readInstalledVersion(deps.run, claudePath, deps.env);
