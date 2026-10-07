@@ -39,12 +39,12 @@ steps are in [RELEASING.md](RELEASING.md).
 | # | Step | Done |
 | --- | --- | --- |
 | 1 | GitHub repository, public | yes |
-| 2 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md "Once, before the first release") | no |
+| 2 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md "Once, around the first two releases") | no |
 | 3 | Release pull request for 0.2.1, merged; tag `v0.2.1` pushed from `main` | no |
 | 4 | The Release workflow ended green: the package is on npm and the GitHub release exists | no |
 | 5 | The published package installs: `paseo plugin install npm:paseo-plugin-claude-update@0.2.1` | no |
 
-`npm pack --dry-run` on 2026-10-07 (24 files, 31.3 kB packed, 103.9 kB unpacked): `CHANGELOG.md`,
+`npm pack --dry-run` on 2026-10-07 (24 files, about 32 kB packed): `CHANGELOG.md`,
 `LICENSE`, `README.md`, `package.json`, `paseo-plugin.json`, `index.client.tsx`, `index.server.ts`,
 `client/{settings,status}.tsx`, `client/{activity,bus,sidebar}.ts`, `server/{claude,notify,paths,processes,run,service,store,updater}.ts`,
 `shared/{format,settings,status,version}.ts`. Tests, the stub, the release script, CI and these notes are not published.

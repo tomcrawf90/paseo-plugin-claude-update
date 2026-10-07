@@ -28,7 +28,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `.github/workflows/ci.yml` | Verify on Linux and macOS with Node 22 and 24, lint the workflows, and one `CI passed` check for branch protection. |
 | `.github/workflows/release.yml` | Runs on a pushed tag `vX.Y.Z`: verify, publish to npm, GitHub release. npm names this file as the trusted publisher, so do not rename it. |
 | `RELEASING.md` | The release steps, the one-time npm setup, what to do when a release fails, the repository settings to switch on. |
-| `CONTRIBUTING.md`, `SECURITY.md`, `.github/` templates, `.github/dependabot.yml` | For people outside. Dependabot leaves `@getpaseo/plugin`, `react`, `react-native` and `@types/react` alone: they follow the supported Paseo version. |
+| `CONTRIBUTING.md`, `SECURITY.md`, `.github/` templates, `.github/dependabot.yml` | For people outside. Dependabot opens no version-update pull requests for `@getpaseo/plugin`, `react`, `react-native` and `@types/react`: they follow the supported Paseo version. A security update for one of them still comes, and is judged against that version. |
 
 Code lives only in `client/`, `server/`, `shared/` and the two entries; a module at the root does not compile in Paseo.
 

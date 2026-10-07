@@ -10,20 +10,23 @@ Pushing the tag is the release. `.github/workflows/release.yml` does the rest.
 State on 2026-10-07: nothing is published, no tag exists and the release workflow has never run.
 0.2.1 is the first version to release.
 
-## Once, before the first release
+## Once, around the first two releases
 
-npm will not let a package name a trusted publisher until the package exists, so the first release
-is published with a token and every later one without.
+Every sibling plugin publishes with npm trusted publishing: no token, npm trusts this repository's
+release workflow. But the trusted publisher is a setting on the package's own page, and npm's
+`npm trust` documentation says "the package you're configuring must already exist on the npm
+registry". So the first release is published with a token and the later ones without.
 
-| # | Step | Where | Detail |
-| --- | --- | --- | --- |
-| 1 | Have an npm account with two-factor authentication | <https://www.npmjs.com/signup> | The package name `paseo-plugin-claude-update` was free on 2026-10-07. |
-| 2 | Create a granular access token | npmjs.com → your avatar → Access Tokens → Generate New Token | Expiration: 7 days. Tick "Bypass two-factor authentication". Packages and scopes: Read and write, All packages (a package that does not exist yet cannot be selected). Organizations: no access. |
-| 3 | Store it as the repository secret `NPM_TOKEN` | GitHub → Settings → Secrets and variables → Actions → New repository secret, or `gh secret set NPM_TOKEN --repo tomcrawf90/paseo-plugin-claude-update` (it asks for the value) | Never paste it anywhere else. |
-| 4 | Release 0.2.1 | "Each release" below | The workflow publishes with the token. The package gets a provenance statement either way. |
-| 5 | Name the trusted publisher | npmjs.com → the package → Settings → Trusted Publisher → GitHub Actions | The form fields are in the table below. |
-| 6 | Remove the token | Delete the `NPM_TOKEN` secret on GitHub and revoke the token on npmjs.com | From here on the workflow needs no secret. |
-| 7 | Close the token route | npmjs.com → the package → Settings → Publishing access → "Require two-factor authentication and disallow tokens" | Trusted publishing still works; a leaked token no longer can publish. |
+| # | When | Step | Where | Detail |
+| --- | --- | --- | --- | --- |
+| 1 | Before 0.2.1 | Have an npm account with two-factor authentication | <https://www.npmjs.com/signup> | The package name `paseo-plugin-claude-update` was free on 2026-10-07. |
+| 2 | Before 0.2.1 | Create a granular access token | npmjs.com → your avatar → Access Tokens → Generate New Token | Expiration: as short as covers the first release (the default is 7 days). Tick "Bypass two-factor authentication". Packages and scopes: "Read and write (publish and stage)", not the stage-only choice, for all packages (the package does not exist yet, so it probably cannot be picked by name). Organizations: no access. |
+| 3 | Before 0.2.1 | Store it as the repository secret `NPM_TOKEN` | GitHub → Settings → Secrets and variables → Actions → New repository secret, or `gh secret set NPM_TOKEN --repo tomcrawf90/paseo-plugin-claude-update` (it asks for the value) | Never paste it anywhere else. |
+| 4 | | Release 0.2.1 | "Each release" below | The workflow publishes with the token. The package gets a provenance statement either way. |
+| 5 | Right after 0.2.1 | Delete the `NPM_TOKEN` secret and revoke the token, unless the next release is days away | GitHub secrets; npmjs.com → Access Tokens | An all-packages token should not outlive its one use. |
+| 6 | Within two days before the next release | Name the trusted publisher | npmjs.com → Packages → the package → Settings → Trusted publishing → GitHub Actions | The form fields are in the table below. npm's documentation says a new trusted publisher that has not published within 2 days expires, which is why this waits for the next release. |
+| 7 | | Release the next version | "Each release" below | Published through the trusted publisher. If npm refuses, nothing is published: fix the form and re-run the failed job. |
+| 8 | After that release | Close the token route | npmjs.com → the package → Settings → Publishing access → "Require two-factor authentication and disallow tokens" | Trusted publishing still works; a leaked token can no longer publish. |
 
 Trusted publisher form (case-sensitive, exact):
 
@@ -34,12 +37,11 @@ Trusted publisher form (case-sensitive, exact):
 | Repository | `paseo-plugin-claude-update` |
 | Workflow filename | `release.yml` (the file name only, with its extension) |
 | Environment name | leave empty |
+| Allowed actions | Allow publishing directly with `npm publish`, which is what the workflow runs. Staged publishing alone is not enough. What the form selects by default was not seen. |
 
-npm's documentation, read 2026-10-07 and not tested here, says a new trusted publisher has to be
-used for a successful publish within two days. If step 5 is done long before the next release and
-npm has dropped the entry by then, add it again, or keep `NPM_TOKEN` in place for one more release.
-
-With both a trusted publisher and `NPM_TOKEN` present, npm uses the trusted publisher.
+With both a trusted publisher and `NPM_TOKEN` present, npm uses the trusted publisher. npm's
+documentation also says that publishing directly with a granular token will be removed in January
+2027, so the token is for the first release only.
 
 ## Each release
 
@@ -96,14 +98,19 @@ job. The publish job installs no dependencies and runs no package script. It is 
 A version cannot be published twice: the workflow checks the registry before publishing, releases
 never run side by side, and npm itself refuses a version it has had.
 
+Push one release tag at a time and let its run finish. GitHub keeps only one waiting run per
+concurrency group, so a third tag pushed while the first is still running cancels the second one's
+run; it would have to be started again from the Actions page.
+
 ## When a release fails
 
 | # | What happened | What to do |
 | --- | --- | --- |
 | 1 | Published to npm, GitHub release failed | Actions → the run → "Re-run failed jobs". Only the release job runs again. Do not re-run all jobs: the first one would stop at "already on npm". |
-| 2 | `npm publish` failed on credentials | Fix the trusted publisher or the `NPM_TOKEN` secret (above), then "Re-run failed jobs". Nothing was published. |
-| 3 | A check failed before publishing (tag, changelog, tests) | Nothing was published. Fix it on `main` through a pull request. If the tag now points at the wrong commit, delete it (`git push origin :refs/tags/vX.Y.Z`, `git tag -d vX.Y.Z`) and tag the fixed commit. Only ever do this for a version that never reached npm. |
-| 4 | A bad version reached npm | Release a fixed patch version. `npm deprecate paseo-plugin-claude-update@X.Y.Z "reason"` warns people off the bad one. Do not unpublish and do not move the tag. |
+| 2 | `npm publish` failed on credentials | Nothing was published. Fix the trusted publisher or the `NPM_TOKEN` secret (above), then "Re-run failed jobs". |
+| 3 | The publish job is red but npm has the version (the upload went through and the answer was lost) | Check with `npm view paseo-plugin-claude-update versions`. Re-running stops at "already on npm", so make the GitHub release by hand: download the `release` artifact from the run (kept 7 days; it holds the tarball and `notes.md`) and run `gh release create vX.Y.Z <tarball> --verify-tag --title vX.Y.Z --notes-file notes.md`. |
+| 4 | A check failed before publishing (tag, changelog, tests) | Nothing was published. Fix it on `main` through a pull request. If the tag now points at the wrong commit, delete it (`git push origin :refs/tags/vX.Y.Z`, `git tag -d vX.Y.Z`) and tag the fixed commit. Only ever do this for a version that never reached npm. |
+| 5 | A bad version reached npm | Release a fixed patch version. `npm deprecate paseo-plugin-claude-update@X.Y.Z "reason"` warns people off the bad one. Do not unpublish and do not move the tag. |
 
 `publishConfig.provenance` is `true`, so a plain `npm publish` from a laptop fails: provenance can
 only be made in CI. That is on purpose. If a release ever has to be published by hand, it is
@@ -116,7 +123,7 @@ None of these are set by the code in this repository. Most useful first.
 | # | Setting | Where | Value |
 | --- | --- | --- | --- |
 | 1 | Protect `main` | Settings → Rules → Rulesets → New branch ruleset, target the default branch | Require a pull request before merging, with 0 required approvals (one maintainer cannot approve their own); require the status check `CI passed`; block force pushes; restrict deletions. No bypass, so the rule holds for the owner too. |
-| 2 | Protect release tags | Settings → Rules → Rulesets → New tag ruleset, target `v*` | Restrict updates and restrict deletions, so a pushed release tag cannot be moved; restrict creations with the repository admin role on the bypass list, so only the owner tags a release. (Recovery 3 above then needs the ruleset switched off for a moment.) |
+| 2 | Protect release tags | Settings → Rules → Rulesets → New tag ruleset, target `v*` | Restrict updates and restrict deletions, with an empty bypass list, so that nobody, the owner included, can move or delete a pushed release tag. Creating tags stays open to whoever can push, which is the owner alone. A bypass list applies to the whole ruleset, so adding the admin role to it would undo the rule for the owner. Recovery 4 above needs the ruleset switched off for a moment. |
 | 3 | Secret scanning and push protection | Settings → Advanced Security | On. Free for a public repository. |
 | 4 | Private vulnerability reporting | Settings → Advanced Security | On. `SECURITY.md` sends reports there. |
 | 5 | Dependabot alerts and security updates | Settings → Advanced Security | On. `.github/dependabot.yml` already asks for weekly version updates. |
@@ -130,4 +137,5 @@ None of these are set by the code in this repository. Most useful first.
 | --- | --- |
 | The release workflow end to end | Never run: it starts only on a tag, and no tag has been pushed. Checked with `actionlint`; the checks it runs are tested in `scripts/release.test.mjs` and were run by hand against this repository. |
 | Publishing with a token, then with a trusted publisher | Not done. That npm tries the trusted publisher first and falls back to the token was read in the npm CLI source (`lib/utils/oidc.js`), not seen. |
-| The npm form and token screens | Taken from npm's documentation on 2026-10-07, not from the screens. |
+| The npm form and token screens | Taken from npm's documentation on 2026-10-07, not from the screens. That includes: a package must exist before it can name a trusted publisher, the 2-day expiry of an unused one, and the choices on the token form. |
+| The ruleset and settings names | Written from GitHub's documentation, not clicked through on this repository. |
