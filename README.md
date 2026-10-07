@@ -49,13 +49,17 @@ it update on the schedule.
 Open **Claude Code updates** in the sidebar for the status page, or **Settings → Plugins → Claude
 Code updates** for the settings. The Command Center (⌘K) has "Claude Code updates: check now".
 
+**Check now** only looks: it compares versions and installs nothing, whatever the mode. **Update
+now** on the status page is the one button that installs. A look counts as a check, so the next
+scheduled one is a full interval after it.
+
 ## Configuration
 
 Settings are per daemon host, under **Settings → Plugins → Claude Code updates**.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| Check on a schedule | on | The disable switch. Off stops every scheduled check; "Check now" still works. |
+| Check on a schedule | on | The disable switch. Off stops every scheduled check; "Check now" and "Update now" still work. |
 | When an update is found | Only tell me | "Only tell me" reports the update and changes nothing. "Install updates" installs it at the scheduled check. "Update now" on the status page installs it in either mode. |
 | Channel | `latest` | The channel the installed version is compared with: `latest` or `stable` (about a week behind). See the note below. |
 | Check every (hours) | 4 | 1 to 168. |

@@ -89,7 +89,7 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
         <SettingsCard>
           <SettingsSwitch
             label="Check on a schedule"
-            hint="Off stops every scheduled check. Check now still works."
+            hint="Off stops every scheduled check. Check now and Update now still work."
             value={values.enabled}
             disabled={saving}
             onValueChange={(enabled) => void apply({ enabled })}

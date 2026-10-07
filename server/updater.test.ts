@@ -138,6 +138,19 @@ describe("notify-only mode", () => {
     expect(h.notifications).toHaveLength(2);
   });
 
+  it("a manual look installs nothing in auto mode either, pin included", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const looked = await runCheck(h.deps, settingsWith({ mode: "auto" }), "manual");
+    expect(looked.lastOutcome).toBe("update-available");
+    expect(looked.lastMessage).toContain("next scheduled check installs it");
+    const pinned = await runCheck(h.deps, settingsWith({ mode: "auto", pinnedVersion: "2.1.280" }), "manual", { apply: false });
+    expect(pinned.lastOutcome).toBe("pin-mismatch");
+    expect(h.claude.calls).toEqual(["--version", "--version"]);
+    // The schedule then installs what the look found.
+    const scheduled = await runCheck(h.deps, settingsWith({ mode: "auto" }), "schedule");
+    expect(scheduled.lastOutcome).toBe("updated");
+  });
+
   it("installs when the user asks for it", async () => {
     const h = harness("2.1.285", "2.1.292");
     const state = await runCheck(h.deps, settingsWith({ mode: "notify" }), "manual", { apply: true });

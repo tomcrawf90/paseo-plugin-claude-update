@@ -141,9 +141,19 @@ describe("a manual check", () => {
   it("runs even when the schedule is off or backing off", async () => {
     const h = harness("2.1.285", "2.1.292", { lastCheckAt: "2026-10-07T09:59:00Z", retryNotBefore: "2026-10-08T00:00:00Z" });
     const s = start(h, settingsWith({ enabled: false }));
-    const state = await s.check("manual", false);
+    const state = await s.check("manual", true);
     expect(state.lastOutcome).toBe("updated");
     expect(h.store.history[0]?.trigger).toBe("manual");
+  });
+
+  it("only looks unless told to install, even in auto mode", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const s = start(h, settingsWith({ mode: "auto" }), { minimumGapMs: 0 });
+    const state = await s.check("manual", false);
+    expect(state.lastOutcome).toBe("update-available");
+    expect(state.lastMessage).toContain("Nothing was changed");
+    expect(h.claude.calls).toEqual(["--version"]);
+    expect(h.claude.installed).toBe("2.1.285");
   });
 
   it("refuses with invalid settings", async () => {
@@ -172,7 +182,7 @@ describe("status", () => {
       return run(file, args, options);
     };
     const s = start(h, settingsWith({ intervalHours: 4 }));
-    await s.check("manual", false);
+    await s.check("manual", true);
     const paseo = {
       agents: { list: async () => ({ entries: [{ agent: { id: "agent-old", title: "Fix the login test" } }] }) },
     } as unknown as Parameters<Service["status"]>[0];
@@ -194,7 +204,7 @@ describe("status", () => {
   it("has no next check while disabled, and clears a notice on dismiss", async () => {
     const h = harness("2.1.285", "2.1.292");
     const s = start(h, settingsWith({ enabled: false }));
-    await s.check("manual", false);
+    await s.check("manual", true);
     expect((await s.status()).attention?.kind).toBe("updated");
     await s.dismiss();
     const status = await s.status();

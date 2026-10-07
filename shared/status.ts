@@ -72,7 +72,10 @@ export const getStatus = defineRpc({
   output: statusSchema,
 });
 
-/** Checks now, ignoring the schedule and any failure backoff. `apply` installs even in notify mode. */
+/**
+ * Checks now, ignoring the schedule and any failure backoff. Without `apply`
+ * it only looks, whatever the mode; with it, it installs what it finds.
+ */
 export const checkNow = defineRpc({
   name: "status.check",
   input: z.object({ apply: z.boolean().default(false) }),

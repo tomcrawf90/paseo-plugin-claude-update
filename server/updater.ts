@@ -69,7 +69,10 @@ export function isDue(state: State, settings: UpdateSettings, now: number): bool
 }
 
 export interface CheckOptions {
-  /** Install even in notify mode: the user pressed "Update now". */
+  /**
+   * Install whatever the mode: the user pressed "Update now". Without it a
+   * manual check only looks, and only the schedule installs, in `auto` mode.
+   */
   apply?: boolean;
 }
 
@@ -92,7 +95,15 @@ export async function runCheck(
   const { store } = deps;
   const previous = await store.readState();
   const at = deps.now().toISOString();
-  const wantApply = settings.mode === "auto" || options.apply === true;
+  // "Check now" must never install: only "Update now" does, or the schedule in auto mode.
+  const wantApply = options.apply === true || (trigger === "schedule" && settings.mode === "auto");
+  // Why a look that found something left it alone, for the message.
+  const untouched =
+    trigger === "schedule"
+      ? "Nothing was changed."
+      : settings.mode === "auto"
+        ? 'Nothing was changed: the next scheduled check installs it, or use "Update now".'
+        : 'Nothing was changed. Use "Update now" to install it.';
   const known: Partial<State> = {};
 
   async function save(state: State, line: string): Promise<State> {
@@ -205,7 +216,7 @@ export async function runCheck(
       return notable(
         "pin-mismatch",
         "pin-mismatch",
-        `Claude Code is pinned at ${pin} but ${installed} is installed. Notify-only mode: run "claude install ${pin}" to move to it.`,
+        `Claude Code is pinned at ${pin} but ${installed} is installed. ${untouched}`,
         {},
         { from: installed, to: null, key: `pin-mismatch:${pin}:${installed}` },
       );
@@ -244,7 +255,7 @@ export async function runCheck(
     return notable(
       "update-available",
       "update-available",
-      `Claude Code ${target} is available (${installed} is installed). Notify-only mode: nothing was changed.`,
+      `Claude Code ${target} is available (${installed} is installed). ${untouched}`,
       {},
       { from: installed, to: null, key: `available:${installed}:${target}` },
     );

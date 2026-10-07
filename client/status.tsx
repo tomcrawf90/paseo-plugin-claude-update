@@ -171,7 +171,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Check for a Claude Code update now"
+            accessibilityLabel="Check for a Claude Code update now, without installing it"
             disabled={busy}
             style={[styles.button, busy ? styles.disabled : null]}
             onPress={() => check.mutate(false)}
