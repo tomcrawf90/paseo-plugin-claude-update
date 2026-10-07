@@ -4,6 +4,14 @@
   "description": "Paseo plugin: keeps the Claude Code CLI up to date on the daemon host, where its own updater never runs",
   "license": "MIT",
   "author": "Tom Crawford",
+  "homepage": "https://github.com/tomcrawf90/paseo-plugin-claude-update#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomcrawf90/paseo-plugin-claude-update.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tomcrawf90/paseo-plugin-claude-update/issues"
+  },
   "type": "module",
   "keywords": [
     "paseo",
@@ -19,7 +27,6 @@
     "client/",
     "server/",
     "shared/",
-    "images/",
     "CHANGELOG.md",
     "!**/*.test.ts"
   ],

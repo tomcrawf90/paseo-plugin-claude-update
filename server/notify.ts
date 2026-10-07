@@ -26,6 +26,3 @@ export function createNotifier(run: Runner, platform: NodeJS.Platform) {
     }
   };
 }
-
-export const notificationScript = (title: string, message: string): string =>
-  `display notification ${quote(message)} with title ${quote(title)}`;
