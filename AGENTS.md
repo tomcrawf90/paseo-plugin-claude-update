@@ -20,7 +20,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `server/processes.ts` | Lists running Claude processes and their versions (`ps` + `lsof`, macOS). Read only. |
 | `server/store.ts`, `paths.ts`, `run.ts`, `notify.ts` | State and log files; data directory and finding `claude`; running a program without a shell; macOS notification. |
 | `shared/` | Settings schema, RPC contracts, version and display helpers. No Node or React imports. |
-| `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. |
+| `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. `client/sidebar.ts` holds the row's swap logic apart from React Native so it can be tested. |
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
 | `test/cafe-scan.mjs` | Local copy of the Paseo Cafe scanner's rules. |
 | `docs/listing-preview.html`, `SUBMISSION.md` | Listing preview and the publish and submission checklist. |
@@ -83,6 +83,14 @@ copied CLI and updates that. Desktop notifications still reach the real screen: 
 expect one. Afterwards compare `ls -la ~/.local/bin/claude ~/.local/share/claude/versions` with
 before, and remove `/tmp/cc-sandbox` and `/tmp/pcu-paseo`.
 
+Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then used):
+
+| Fact | Detail |
+| --- | --- |
+| Where settings live | `$PASEO_HOME/plugin-settings/claude-update/update.json`, as `{"version": 1, "values": {…}}`. It is read from disk on every read, and `paseo plugin install` leaves an existing file alone (`remove` deletes it), so writing it before installing fixes the mode before the first check. |
+| A directory install runs in place | Paseo loads the plugin from the directory it was installed from. Edits to that checkout reach the running plugin at its next reload. |
+| Calling an RPC without the app | `DaemonClient` in `@getpaseo/client` (`dist/daemon-client.js`, an internal module) has `invokePluginRpc(pluginId, method, input)`. Connect to `ws://127.0.0.1:<port>/ws` with any non-empty `clientId`, then call `status.get`, or `status.check` with `{ "apply": false }` to look without installing. |
+
 ## Conventions
 
 - Commits: one logical change each, imperative subject in sentence case, on `main` until there is a remote.
@@ -90,7 +98,8 @@ before, and remove `/tmp/cc-sandbox` and `/tmp/pcu-paseo`.
 - The install changes only through `claude update` and `claude install <version>`. Never download a release, write under `~/.local/share/claude`, relink `~/.local/bin/claude`, or read-modify-write `~/.claude.json` or `~/.claude/settings.json` (the latter is read, never written). That rule is about this plugin's code. The CLI's own installer does write there: `claude install <version>` (pin and rollback) rewrites `installMethod`, `autoUpdates` and `autoUpdatesProtectedForNative` in `~/.claude.json`, so never describe the plugin as leaving that file untouched.
 - Never restart, stop or message an agent. The plugin lists old processes and stops there.
 - Start processes with `execFile` only. The Paseo Cafe scanner fails any source file, comments and tests included, that contains the text of a synchronous process call, a shell `-c`, or a command-line download tool; `npm run lint:cafe` checks this.
-- A check makes one attempt and never retries inside itself. Anything optional after a successful update (counting old processes, notifying) must not be able to lose the record of it.
+- A fresh install is in "Only tell me" mode. Only two things install: the schedule in "Install updates" mode, and "Update now" (`apply: true`). "Check now" (`apply: false`) must stay look-only in every mode.
+- A check makes one attempt and never retries inside itself. The state is written first; anything after a successful update (the history line, the log line, counting old processes, notifying) must not be able to lose the record of it.
 - UI: React Native primitives, colours from `theme.colors`, padding from `layout.compact`.
 - Every behaviour change comes with a test. A new CLI output or failure mode goes into `test/stub/claude` too.
 
@@ -116,7 +125,8 @@ plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it 
 | Status page, settings screen, sidebar row, toasts in the app | Not seen in the app. Typechecked only. Changing the sidebar row by removing and re-adding it is an assumption about `addSidebarItem` in 0.10; Paseo 0.11 documents runtime add and remove for its newer `addSidebarHeaderItem`/`addSidebarFooterItem` and calls `addSidebarItem` deprecated. |
 | Cost of the status call | `status.get` runs `ps`, `lsof` and an agent list each time, and is polled every 60 s by each connected app and every 30 s by an open status page. Fine on one machine; a lighter notice-only call is the obvious next step if it ever matters. |
 | macOS notification raised from the daemon | Not confirmed. One may have been raised during the throwaway-daemon run; errors from it are swallowed by design and nobody was watching the screen. |
-| Listing old processes | The plugin's own code was run read-only on the host on 2026-10-07 and classified 11 live processes correctly (agents, Claude's daemon, a leftover 2.1.269 process). Not exercised through a daemon: in the sandboxed throwaway daemon `ps` failed to start (EPERM). |
+| Listing old processes | Verified through a live 0.10.3 daemon on 2026-10-07 (`status.get`): supported, and it reported the one process on an old version (a leftover 2.1.269) while the ten on the installed version were not listed. A home directory with a space in it is covered by tests only. |
+| A manual look-only check | Verified through a live daemon the same day: `status.check` with `apply: false` reported 2.1.285 against 2.1.292 and ran only `claude --version`. |
 | Linux, Windows | Untested. The process list and notifications are macOS only by design. |
 | Homebrew, WinGet, npm installs of Claude Code | Not supported; `claude update` is for the native installer. |
 | An update cut short by a plugin reload or daemon stop | Not tested. The CLI is assumed to leave the old version in place. |

@@ -44,7 +44,7 @@ npm publish --access public
 paseo plugin install npm:paseo-plugin-claude-update@0.1.0
 ```
 
-`npm pack --dry-run` on 2026-10-07 (21 files, 22.8 kB packed, 74.6 kB unpacked): `CHANGELOG.md`,
+`npm pack --dry-run` on 2026-10-07 (22 files, 24.9 kB packed, 80.9 kB unpacked): `CHANGELOG.md`,
 `LICENSE`, `README.md`, `package.json`, `paseo-plugin.json`, `index.client.tsx`, `index.server.ts`,
 `client/{settings,status}.tsx`, `server/{claude,notify,paths,processes,run,service,store,updater}.ts`,
 `shared/{format,settings,status,version}.ts`. Tests, the stub, CI and these notes are not published.
