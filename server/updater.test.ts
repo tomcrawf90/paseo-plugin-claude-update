@@ -1,0 +1,313 @@
+import { describe, expect, it } from "vitest";
+
+import { exit, harness, ok, settingsWith } from "../test/support";
+import { backoffMs, FAILURE_ALERT_AFTER, isDue, nextCheckAt, runCheck } from "./updater";
+import { EMPTY_STATE } from "./store";
+
+const HOUR = 60 * 60_000;
+
+describe("runCheck when nothing is new", () => {
+  it("is quiet: no install, no history, no notification", async () => {
+    const h = harness("2.1.292", "2.1.292");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("up-to-date");
+    expect(state.installedVersion).toBe("2.1.292");
+    expect(state.targetVersion).toBe("2.1.292");
+    expect(h.claude.calls).toEqual(["--version"]);
+    expect(h.store.history).toEqual([]);
+    expect(h.notifications).toEqual([]);
+    expect(state.attention).toBeNull();
+  });
+
+  it("is idempotent: a second check changes only the time", async () => {
+    const h = harness("2.1.292", "2.1.292");
+    const first = await runCheck(h.deps, settingsWith(), "schedule");
+    h.clock.now += 4 * HOUR;
+    const second = await runCheck(h.deps, settingsWith(), "schedule");
+    expect({ ...second, lastCheckAt: null }).toEqual({ ...first, lastCheckAt: null });
+    expect(second.lastCheckAt).not.toBe(first.lastCheckAt);
+    expect(h.store.history).toEqual([]);
+    expect(h.claude.calls).toEqual(["--version", "--version"]);
+  });
+
+  it("does not downgrade when the installed version is ahead of the channel", async () => {
+    const h = harness("2.1.292");
+    h.pointers.stable = "2.1.285";
+    const state = await runCheck(h.deps, settingsWith({ channel: "stable" }), "schedule");
+    expect(state.lastOutcome).toBe("up-to-date");
+    expect(h.claude.calls).toEqual(["--version"]);
+  });
+});
+
+describe("runCheck when an update exists", () => {
+  it("installs it with claude update, confirms the version and keeps a rollback note", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(h.claude.calls).toEqual(["--version", "update", "--version"]);
+    expect(state.lastOutcome).toBe("updated");
+    expect(state.installedVersion).toBe("2.1.292");
+    expect(state.previousVersion).toBe("2.1.285");
+    expect(state.lastMessage).toContain("claude install 2.1.285");
+    expect(state.lastMessage).toContain("2 running Claude processes are still on an older version");
+    expect(state.attention?.kind).toBe("updated");
+    expect(h.store.history).toHaveLength(1);
+    expect(h.store.history[0]).toMatchObject({ outcome: "updated", from: "2.1.285", to: "2.1.292", trigger: "schedule" });
+    expect(h.notifications).toHaveLength(1);
+  });
+
+  it("is quiet again on the check after an update", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    await runCheck(h.deps, settingsWith(), "schedule");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("up-to-date");
+    expect(h.store.history).toHaveLength(1);
+    expect(h.notifications).toHaveLength(1);
+    expect(state.previousVersion).toBe("2.1.285");
+    // The update notice stays until the user dismisses it.
+    expect(state.attention?.kind).toBe("updated");
+  });
+
+  it("records a second update after a manual rollback", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    await runCheck(h.deps, settingsWith(), "schedule");
+    h.claude.installed = "2.1.285";
+    await runCheck(h.deps, settingsWith(), "schedule");
+    expect(h.store.history.map((entry) => entry.outcome)).toEqual(["updated", "updated"]);
+  });
+
+  it("respects the notification switch", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    await runCheck(h.deps, settingsWith({ desktopNotifications: false }), "schedule");
+    expect(h.notifications).toEqual([]);
+    expect(h.store.history).toHaveLength(1);
+  });
+
+  it("only ever runs --version, update and install", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    await runCheck(h.deps, settingsWith(), "schedule");
+    await runCheck(h.deps, settingsWith({ pinnedVersion: "2.1.280" }), "schedule");
+    for (const call of h.claude.calls) expect(call).toMatch(/^(--version|update|install \d+\.\d+\.\d+)$/);
+  });
+});
+
+describe("notify-only mode", () => {
+  it("reports an update once and never installs", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const settings = settingsWith({ mode: "notify" });
+    const first = await runCheck(h.deps, settings, "schedule");
+    const second = await runCheck(h.deps, settings, "schedule");
+    expect(first.lastOutcome).toBe("update-available");
+    expect(second.lastOutcome).toBe("update-available");
+    expect(h.claude.calls).toEqual(["--version", "--version"]);
+    expect(h.store.history).toHaveLength(1);
+    expect(h.notifications).toHaveLength(1);
+    expect(h.claude.installed).toBe("2.1.285");
+  });
+
+  it("reports again when a newer version appears", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const settings = settingsWith({ mode: "notify" });
+    await runCheck(h.deps, settings, "schedule");
+    h.pointers.latest = "2.1.293";
+    await runCheck(h.deps, settings, "schedule");
+    expect(h.notifications).toHaveLength(2);
+  });
+
+  it("installs when the user asks for it", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const state = await runCheck(h.deps, settingsWith({ mode: "notify" }), "manual", { apply: true });
+    expect(state.lastOutcome).toBe("updated");
+    expect(h.claude.calls).toContain("update");
+  });
+});
+
+describe("failures", () => {
+  it("fails when the launcher cannot be found, without running anything", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.deps.isExecutable = async () => false;
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(state.lastMessage).toContain("Could not find the claude launcher");
+    expect(h.claude.calls).toEqual([]);
+  });
+
+  it("fails when a configured path is wrong, rather than falling back to another install", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const state = await runCheck(h.deps, settingsWith({ claudePath: "/nope/claude" }), "schedule");
+    expect(state.lastMessage).toContain("/nope/claude");
+    expect(h.claude.calls).toEqual([]);
+  });
+
+  it("fails without installing when there is no network", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.pointers.latest = new Error("fetch failed");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(state.lastMessage).toContain("fetch failed");
+    expect(h.claude.calls).toEqual(["--version"]);
+    expect(state.installedVersion).toBe("2.1.285");
+  });
+
+  it("fails when the pointer holds something that is not a version", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.pointers.latest = "<html>captive portal</html>";
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(h.claude.calls).toEqual(["--version"]);
+  });
+
+  it("fails when claude update exits non-zero, and runs it only once", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.claude.on.update = () => exit(1, "Error: Failed to install native update", "getaddrinfo ENOTFOUND");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(state.lastMessage).toContain("exit code 1");
+    expect(state.lastMessage).toContain("ENOTFOUND");
+    expect(h.claude.calls.filter((call) => call === "update")).toHaveLength(1);
+  });
+
+  it("fails when claude update exits 0 but nothing changed (updates disabled by policy)", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.claude.on.update = () => ok("Updates are disabled by your administrator.");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(state.lastMessage).toContain("still 2.1.285");
+    expect(state.lastMessage).toContain("disabled by your administrator");
+  });
+
+  it("fails on a timeout", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.claude.on.update = () => ({ code: null, stdout: "", stderr: "", error: "timed out", timedOut: true });
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastMessage).toContain("timed out");
+  });
+
+  it("fails when the version cannot be read", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.claude.on["--version"] = () => exit(126, "", "cannot execute binary file");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(h.claude.calls).toEqual(["--version"]);
+  });
+
+  it("backs off, alerts once on the third failure in a row and recovers quietly", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.pointers.latest = new Error("offline");
+    const settings = settingsWith({ intervalHours: 4 });
+    const waits: number[] = [];
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const state = await runCheck(h.deps, settings, "schedule");
+      expect(state.consecutiveFailures).toBe(attempt);
+      waits.push((Date.parse(state.retryNotBefore ?? "") - h.clock.now) / HOUR);
+      h.clock.now = Date.parse(state.retryNotBefore ?? "");
+    }
+    expect(waits).toEqual([4, 8, 16, 24, 24]);
+    expect(FAILURE_ALERT_AFTER).toBe(3);
+    expect(h.notifications).toHaveLength(1);
+    expect(h.notifications[0]).toContain("3 times in a row");
+    expect(h.store.state.attention?.kind).toBe("failed");
+    expect(h.store.history).toHaveLength(5);
+
+    h.pointers.latest = "2.1.285";
+    const recovered = await runCheck(h.deps, settings, "schedule");
+    expect(recovered.lastOutcome).toBe("up-to-date");
+    expect(recovered.consecutiveFailures).toBe(0);
+    expect(recovered.retryNotBefore).toBeNull();
+    expect(recovered.attention).toBeNull();
+    expect(h.notifications).toHaveLength(1);
+  });
+});
+
+describe("pinning", () => {
+  it("does nothing when the pinned version is installed, and never reads the channel", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const state = await runCheck(h.deps, settingsWith({ pinnedVersion: "2.1.285" }), "schedule");
+    expect(state.lastOutcome).toBe("pinned");
+    expect(h.claude.calls).toEqual(["--version"]);
+    expect(h.fetched).toEqual([]);
+    expect(h.store.history).toEqual([]);
+  });
+
+  it("moves to the pinned version with claude install", async () => {
+    const h = harness("2.1.292", "2.1.292");
+    const state = await runCheck(h.deps, settingsWith({ pinnedVersion: "2.1.285" }), "schedule");
+    expect(h.claude.calls).toEqual(["--version", "install 2.1.285", "--version"]);
+    expect(state.lastOutcome).toBe("pin-applied");
+    expect(state.installedVersion).toBe("2.1.285");
+    expect(state.previousVersion).toBe("2.1.292");
+    expect(h.fetched).toEqual([]);
+  });
+
+  it("only reports a pin mismatch in notify mode", async () => {
+    const h = harness("2.1.292");
+    const settings = settingsWith({ pinnedVersion: "2.1.285", mode: "notify" });
+    await runCheck(h.deps, settings, "schedule");
+    const state = await runCheck(h.deps, settings, "schedule");
+    expect(state.lastOutcome).toBe("pin-mismatch");
+    expect(h.claude.calls).toEqual(["--version", "--version"]);
+    expect(h.notifications).toHaveLength(1);
+  });
+
+  it("fails when the pinned version cannot be installed", async () => {
+    const h = harness("2.1.292");
+    h.claude.on.install = () => exit(1, "✘ Installation failed\nRequest failed with status code 404");
+    const state = await runCheck(h.deps, settingsWith({ pinnedVersion: "9.9.999" }), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(state.lastMessage).toContain("404");
+  });
+});
+
+describe("channel", () => {
+  it("leaves the install alone when Claude Code follows a different channel", async () => {
+    const h = harness("2.1.280", "2.1.292");
+    h.pointers.stable = "2.1.285";
+    const settings = settingsWith({ channel: "stable" });
+    const first = await runCheck(h.deps, settings, "schedule");
+    await runCheck(h.deps, settings, "schedule");
+    expect(first.lastOutcome).toBe("channel-mismatch");
+    expect(first.lastMessage).toContain('"autoUpdatesChannel": "stable"');
+    expect(h.claude.calls).toEqual(["--version", "--version"]);
+    expect(h.notifications).toHaveLength(1);
+  });
+
+  it("updates on stable when Claude Code is on stable too", async () => {
+    const h = harness("2.1.280", "2.1.285");
+    h.pointers.stable = "2.1.285";
+    h.files["/home/u/.claude/settings.json"] = JSON.stringify({ autoUpdatesChannel: "stable" });
+    const state = await runCheck(h.deps, settingsWith({ channel: "stable" }), "schedule");
+    expect(state.lastOutcome).toBe("updated");
+    expect(state.claudeChannel).toBe("stable");
+    expect(h.fetched).toEqual(["https://downloads.claude.ai/claude-code-releases/stable"]);
+  });
+});
+
+describe("schedule arithmetic", () => {
+  const now = Date.parse("2026-10-07T10:00:00Z");
+  const at = (offsetHours: number) => new Date(now + offsetHours * HOUR).toISOString();
+
+  it("is due at once when nothing was ever checked", () => {
+    expect(isDue(EMPTY_STATE, settingsWith(), now)).toBe(true);
+    expect(nextCheckAt(EMPTY_STATE, settingsWith())).toBeNull();
+  });
+  it("is never due when disabled", () => {
+    expect(isDue(EMPTY_STATE, settingsWith({ enabled: false }), now)).toBe(false);
+  });
+  it("is due once the interval has passed", () => {
+    const settings = settingsWith({ intervalHours: 4 });
+    expect(isDue({ ...EMPTY_STATE, lastCheckAt: at(-3.9) }, settings, now)).toBe(false);
+    expect(isDue({ ...EMPTY_STATE, lastCheckAt: at(-4) }, settings, now)).toBe(true);
+  });
+  it("waits for the backoff after failures", () => {
+    const settings = settingsWith({ intervalHours: 4 });
+    const state = { ...EMPTY_STATE, lastCheckAt: at(-5), retryNotBefore: at(3) };
+    expect(isDue(state, settings, now)).toBe(false);
+    expect(isDue(state, settings, now + 3 * HOUR)).toBe(true);
+  });
+  it("treats an unreadable time as never checked", () => {
+    expect(isDue({ ...EMPTY_STATE, lastCheckAt: "garbage" }, settingsWith(), now)).toBe(true);
+  });
+  it("doubles the wait up to a day, or the interval when that is longer", () => {
+    expect([1, 2, 3, 4, 9].map((n) => backoffMs(n, 4 * HOUR) / HOUR)).toEqual([4, 8, 16, 24, 24]);
+    expect(backoffMs(5, 48 * HOUR) / HOUR).toBe(48);
+  });
+});

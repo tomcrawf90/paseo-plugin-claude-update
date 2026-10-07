@@ -1,0 +1,73 @@
+#!/bin/sh
+# A stand-in for the Claude Code CLI, for tests. It keeps its "installed
+# version" in a file and never touches a real install.
+#
+#   STUB_CLAUDE_DIR/version  the installed version (required)
+#   STUB_CLAUDE_DIR/latest   what "update" moves to (default: the installed version)
+#   STUB_CLAUDE_DIR/mode     ok (default) | offline | disabled | hang | broken | asks
+#   STUB_CLAUDE_DIR/calls    every invocation's arguments, one per line (written here)
+#
+# The output copies what the real CLI printed without a terminal on 2026-10-07
+# (versions 2.1.285 and 2.1.292).
+dir="${STUB_CLAUDE_DIR:?set STUB_CLAUDE_DIR}"
+echo "$*" >> "$dir/calls"
+mode=$(cat "$dir/mode" 2>/dev/null || echo ok)
+current=$(cat "$dir/version")
+
+case "$1" in
+  --version)
+    if [ "$mode" = broken ]; then
+      echo "claude: cannot execute binary file" >&2
+      exit 126
+    fi
+    echo "$current (Claude Code)"
+    ;;
+  update)
+    latest=$(cat "$dir/latest" 2>/dev/null || echo "$current")
+    case "$mode" in
+      disabled)
+        echo "Updates are disabled by your administrator. Contact your IT team to get the latest version."
+        exit 0
+        ;;
+      hang)
+        sleep 60
+        exit 0
+        ;;
+      asks)
+        # A program that waits for an answer: with stdin closed it reads end-of-file.
+        if read -r answer; then echo "answered: $answer"; else echo "no terminal"; exit 4; fi
+        ;;
+    esac
+    echo "Current version: $current"
+    echo "Checking for updates to latest version..."
+    if [ "$mode" = offline ]; then
+      echo "Error: Failed to install native update"
+      echo "TelemetrySafeError: Failed to fetch version after 3 attempt(s): getaddrinfo ENOTFOUND downloads.claude.ai" >&2
+      exit 1
+    fi
+    if [ "$latest" = "$current" ]; then
+      echo "Claude Code is up to date ($current)"
+    else
+      echo "Updating to $latest..."
+      echo "$latest" > "$dir/version"
+      echo "Successfully updated from $current to version $latest"
+    fi
+    ;;
+  install)
+    target="$2"
+    echo "Checking installation status..."
+    echo "Installing Claude Code native build $target..."
+    if [ "$mode" = offline ] || [ "$target" = "9.9.999" ]; then
+      echo "✘ Installation failed"
+      echo "Request failed with status code 404"
+      exit 1
+    fi
+    echo "$target" > "$dir/version"
+    echo "✔ Claude Code successfully installed!"
+    echo "  Version: $target"
+    ;;
+  *)
+    echo "stub claude: unsupported arguments: $*" >&2
+    exit 2
+    ;;
+esac

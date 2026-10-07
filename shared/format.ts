@@ -25,7 +25,7 @@ export function relativeTime(iso: string | null, now: number): string {
 }
 
 /** The sidebar row's title: it carries the news, since the row is the one thing always on screen. */
-export function sidebarTitle(status: Pick<Status, "attention" | "staleProcesses"> | null): string {
+export function sidebarTitle(status: Pick<Status, "attention"> | null): string {
   const base = "Claude Code updates";
   if (status === null) return base;
   switch (status.attention?.kind) {
