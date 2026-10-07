@@ -113,7 +113,10 @@ describe("with a stub claude on PATH", () => {
     expect(state.lastMessage).toContain("exit code 1");
     expect(state.lastMessage).toContain("Failed to install native update");
     expect(await installed()).toBe("2.1.285");
-    expect(notifications).toEqual([]);
+    // An update that failed is told at once.
+    expect(state.attention?.kind).toBe("failed");
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toContain("could not be updated");
   });
 
   it("notices when the CLI exits 0 without updating", async () => {

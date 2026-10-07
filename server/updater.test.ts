@@ -248,6 +248,60 @@ describe("failures", () => {
     expect(state.lastMessage).toContain("disabled by your administrator");
   });
 
+  it("tells of an update that failed at once, and once", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.claude.on.update = () => exit(1, "Error: Failed to install native update");
+    const settings = settingsWith({ intervalHours: 4 });
+    const first = await runCheck(h.deps, settings, "schedule");
+    expect(first.consecutiveFailures).toBe(1);
+    expect(first.attention).toMatchObject({ kind: "failed" });
+    expect(first.attention?.message).toContain("could not be updated");
+    expect(first.attention?.message).toContain("exit code 1");
+    expect(h.notifications).toHaveLength(1);
+
+    // Dismissed; the retry fails the same way and says nothing new.
+    h.store.state = { ...h.store.state, attention: null };
+    h.clock.now = Date.parse(first.retryNotBefore ?? "");
+    const second = await runCheck(h.deps, settings, "schedule");
+    expect(second.consecutiveFailures).toBe(2);
+    expect(second.attention).toBeNull();
+    expect(h.notifications).toHaveLength(1);
+
+    // The third in a row is the standing alert.
+    h.clock.now = Date.parse(second.retryNotBefore ?? "");
+    const third = await runCheck(h.deps, settings, "schedule");
+    expect(third.attention?.message).toContain("3 times in a row");
+    expect(h.notifications).toHaveLength(2);
+
+    // It installs in the end: the failure notice gives way, and a later failed update is news again.
+    h.claude.on.update = undefined;
+    const done = await runCheck(h.deps, settings, "manual", { apply: true });
+    expect(done.lastOutcome).toBe("updated");
+    expect(done.attention?.kind).toBe("updated");
+    expect(done.announced).toBeNull();
+  });
+
+  it("tells of an update that changed nothing, and of a pin that could not be installed", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.claude.on.update = () => ok("Updates are disabled by your administrator.");
+    expect((await runCheck(h.deps, settingsWith(), "schedule")).attention?.kind).toBe("failed");
+
+    const pinned = harness("2.1.292", "2.1.292");
+    pinned.claude.on.install = () => exit(1, "✘ Installation failed");
+    const state = await runCheck(pinned.deps, settingsWith({ pinnedVersion: "2.1.285" }), "schedule");
+    expect(state.attention?.kind).toBe("failed");
+    expect(pinned.notifications).toHaveLength(1);
+  });
+
+  it("says nothing at the first failure of a check that never reached the installer", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.pointers.latest = new Error("offline");
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("failed");
+    expect(state.attention).toBeNull();
+    expect(h.notifications).toEqual([]);
+  });
+
   it("fails on a timeout", async () => {
     const h = harness("2.1.285", "2.1.292");
     h.claude.on.update = () => ({ code: null, stdout: "", stderr: "", error: "timed out", timedOut: true });

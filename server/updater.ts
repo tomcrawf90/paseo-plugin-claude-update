@@ -204,11 +204,20 @@ export async function runCheck(
     return saved;
   }
 
-  async function fail(message: string): Promise<State> {
+  /**
+   * A failed check is told at the third in a row. One that got as far as the
+   * installer (`install`) is told at once, and once: the user was expecting
+   * a new version, and later failures of the same install wait for the third.
+   */
+  async function fail(message: string, install: { from: string } | null = null): Promise<State> {
     const failures = previous.consecutiveFailures + 1;
     const retryNotBefore = new Date(deps.now().getTime() + backoffMs(failures, settings.intervalHours * HOUR_MS)).toISOString();
-    const alert = failures === FAILURE_ALERT_AFTER;
-    const notice = `Claude Code update check has failed ${failures} times in a row. Last error: ${message}`;
+    const key = install === null ? null : `install-failed:${install.from}`;
+    const repeated = failures === FAILURE_ALERT_AFTER;
+    const alert = repeated || (key !== null && previous.announced !== key);
+    const notice = repeated
+      ? `Claude Code update check has failed ${failures} times in a row. Last error: ${message}`
+      : `Claude Code could not be updated. ${message}`;
     const saved = await save(
       {
         ...previous,
@@ -219,6 +228,7 @@ export async function runCheck(
         consecutiveFailures: failures,
         retryNotBefore,
         attention: alert ? { kind: "failed", message: notice, at } : previous.attention,
+        announced: key ?? previous.announced,
       },
       `failed (${failures} in a row, next not before ${retryNotBefore}): ${message}`,
       entry("failed", message, known.installedVersion ?? null, null),
@@ -263,12 +273,12 @@ export async function runCheck(
     }
     options.onPhase?.("installing");
     const result = await runInstall(deps.run, claudePath, pin, deps.env);
-    if (result.code !== 0) return fail(describeFailure(`claude install ${pin}`, result));
+    if (result.code !== 0) return fail(describeFailure(`claude install ${pin}`, result), { from: installed });
     const after = await readInstalledVersion(deps.run, claudePath, deps.env);
-    if ("error" in after) return fail(after.error);
+    if ("error" in after) return fail(after.error, { from: installed });
     known.installedVersion = after.version;
     if (after.version !== pin) {
-      return fail(`claude install ${pin} exited 0 but the installed version is ${after.version}: ${outputTail(result)}`);
+      return fail(`claude install ${pin} exited 0 but the installed version is ${after.version}: ${outputTail(result)}`, { from: installed });
     }
     return notable(
       "pin-applied",
@@ -318,14 +328,14 @@ export async function runCheck(
 
   options.onPhase?.("installing");
   const result = await runUpdate(deps.run, claudePath, deps.env);
-  if (result.code !== 0) return fail(describeFailure("claude update", result));
+  if (result.code !== 0) return fail(describeFailure("claude update", result), { from: installed });
   const after = await readInstalledVersion(deps.run, claudePath, deps.env);
-  if ("error" in after) return fail(after.error);
+  if ("error" in after) return fail(after.error, { from: installed });
   known.installedVersion = after.version;
   // The exit code alone is not proof: with updates disabled by policy the CLI
   // prints why and still exits 0.
   if (compareVersions(after.version, installed) <= 0) {
-    return fail(`claude update exited 0 but the installed version is still ${after.version}: ${outputTail(result)}`);
+    return fail(`claude update exited 0 but the installed version is still ${after.version}: ${outputTail(result)}`, { from: installed });
   }
   // The update is done; counting what is still on the old version only
   // decorates the message and must not stop it being recorded.
