@@ -28,7 +28,7 @@ only lists them.
 
 ## Install
 
-Requires Paseo 0.10.3 or later, with plugins enabled (**Settings → Plugins**), and Claude Code
+Requires Paseo 0.10.3 or 0.11 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
 installed with its native installer on the daemon host.
 
 ```bash

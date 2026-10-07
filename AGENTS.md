@@ -103,8 +103,9 @@ before, and remove `/tmp/cc-sandbox` and `/tmp/pcu-paseo`.
 5. Publishing to npm and submitting to Paseo Cafe are the owner's decisions; the steps and every form field are in [SUBMISSION.md](SUBMISSION.md). After the first listing, a new npm version is picked up without a new submission.
 
 If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plugin.json`, the
-`@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3` because that is the
-only version the plugin has been typechecked and run against.
+`@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3 <0.12.0 || >=0.11.0-beta.1 <0.12.0`: 0.10.3 is the
+only version the plugin has been typechecked and run against, and the second half is there because a
+plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it has run on 0.12.
 
 ## Known limits and unverified points
 
