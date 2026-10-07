@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      development:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # These follow the Paseo version the plugin supports (AGENTS.md,
+      # "Releases"), not the newest one.
+      - dependency-name: "@getpaseo/plugin"
+      - dependency-name: react
+      - dependency-name: react-native
+      - dependency-name: "@types/react"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,42 @@
+name: Bug report
+description: Something the plugin did wrong, or did not do.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you saw instead.
+    validations:
+      required: true
+  - type: input
+    id: plugin
+    attributes:
+      label: Plugin version
+      description: From `paseo plugin ls`.
+    validations:
+      required: true
+  - type: input
+    id: paseo
+    attributes:
+      label: Paseo version
+    validations:
+      required: true
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version and how it was installed
+      description: From `claude --version`. Only the native installer is supported.
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Only macOS has been tested.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        The relevant lines of `paseo plugin logs claude-update` and of
+        `~/.paseo/plugin-data/claude-update/plugin.log`. Check them for anything private first.
+      render: text
