@@ -65,7 +65,13 @@ export function startService(
   let lastScheduledAt: number | null = null;
   let stopped = false;
 
+  /**
+   * The one place a check starts. Callers await between looking at `running`
+   * and getting here, so this looks again: whoever arrives second joins the
+   * check already running instead of starting another.
+   */
   function start(settings: UpdateSettings, trigger: Trigger, apply: boolean): Promise<State> {
+    if (running !== null) return running;
     const check = runCheck(deps, settings, trigger, { apply }).finally(() => {
       running = null;
     });

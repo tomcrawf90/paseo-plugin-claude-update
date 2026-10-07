@@ -84,6 +84,18 @@ describe("the schedule", () => {
     expect((await s.status()).checking).toBe(false);
   });
 
+  it("runs one update when a manual check lands while a tick is deciding", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    const s = start(h, settingsWith(), { minimumGapMs: 0 });
+    // No waiting between the two: the manual check starts while the tick is
+    // still reading the settings and the state.
+    const [, state] = await Promise.all([s.tick(), s.check("manual", true)]);
+    expect(h.claude.calls.filter((call) => call === "update")).toHaveLength(1);
+    expect(h.store.lines).toHaveLength(1);
+    expect(state.lastOutcome).toBe("updated");
+    expect((await s.status()).checking).toBe(false);
+  });
+
   it("does not hammer when the state cannot be saved", async () => {
     const h = harness("2.1.292", "2.1.292");
     h.store.writeState = async () => {
