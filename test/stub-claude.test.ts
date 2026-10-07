@@ -184,6 +184,12 @@ describe("the command runner", () => {
     expect(result.error).toMatch(/ENOENT/);
   });
 
+  it("reports a process that cannot even be started without throwing", async () => {
+    const result = await runCommand("bad\0path", ["--version"]);
+    expect(result.code).toBeNull();
+    expect(result.error).not.toBeNull();
+  });
+
   it("does not use a shell", async () => {
     const result = await runCommand(STUB, ["install", "2.1.300; touch injected"], { env: env() });
     expect(result.code).toBe(0);

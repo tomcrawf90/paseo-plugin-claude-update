@@ -136,7 +136,7 @@ export async function runCheck(
   ): Promise<State> {
     if (change.key !== null && previous.announced === change.key) return quiet(outcome, message);
     await store.appendHistory(entry(outcome, message, change.from, change.to));
-    if (settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, message);
+    if (settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, message).catch(() => undefined);
     return save(
       {
         ...previous,
@@ -160,7 +160,7 @@ export async function runCheck(
     await store.appendHistory(entry("failed", message, known.installedVersion ?? null, null));
     const alert = failures === FAILURE_ALERT_AFTER;
     const notice = `Claude Code update check has failed ${failures} times in a row. Last error: ${message}`;
-    if (alert && settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, notice);
+    if (alert && settings.desktopNotifications) await deps.notify(NOTIFICATION_TITLE, notice).catch(() => undefined);
     return save(
       {
         ...previous,
@@ -274,7 +274,9 @@ export async function runCheck(
   if (compareVersions(after.version, installed) <= 0) {
     return fail(`claude update exited 0 but the installed version is still ${after.version}: ${outputTail(result)}`);
   }
-  const stale = await deps.countStale(after.version);
+  // The update is done; counting what is still on the old version only
+  // decorates the message and must not stop it being recorded.
+  const stale = await deps.countStale(after.version).catch(() => null);
   const running =
     stale === null || stale === 0
       ? `Running agents keep ${installed} until they are restarted.`

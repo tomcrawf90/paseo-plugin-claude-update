@@ -75,6 +75,21 @@ describe("runCheck when an update exists", () => {
     expect(h.store.history.map((entry) => entry.outcome)).toEqual(["updated", "updated"]);
   });
 
+  it("still records the update when counting old processes or notifying fails", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.deps.countStale = async () => {
+      throw new Error("spawn EPERM");
+    };
+    h.deps.notify = async () => {
+      throw new Error("no notification centre");
+    };
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("updated");
+    expect(state.previousVersion).toBe("2.1.285");
+    expect(state.lastMessage).toContain("Running agents keep 2.1.285");
+    expect(h.store.history).toHaveLength(1);
+  });
+
   it("respects the notification switch", async () => {
     const h = harness("2.1.285", "2.1.292");
     await runCheck(h.deps, settingsWith({ desktopNotifications: false }), "schedule");

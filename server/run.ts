@@ -26,23 +26,29 @@ const MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
  */
 export const runCommand: Runner = (file, args, options = {}) =>
   new Promise((resolve) => {
-    const child = execFile(
-      file,
-      [...args],
-      { timeout: options.timeoutMs ?? 0, maxBuffer: MAX_OUTPUT_BYTES, env: options.env, windowsHide: true },
-      (error, stdout, stderr) => {
-        if (!error) {
-          resolve({ code: 0, stdout, stderr, error: null, timedOut: false });
-          return;
-        }
-        const failure = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null };
-        if (typeof failure.code === "number") {
-          resolve({ code: failure.code, stdout, stderr, error: null, timedOut: false });
-          return;
-        }
-        const timedOut = failure.killed === true;
-        resolve({ code: null, stdout, stderr, error: timedOut ? "timed out" : failure.message, timedOut });
-      },
-    );
-    child.stdin?.end();
+    try {
+      const child = execFile(
+        file,
+        [...args],
+        { timeout: options.timeoutMs ?? 0, maxBuffer: MAX_OUTPUT_BYTES, env: options.env, windowsHide: true },
+        (error, stdout, stderr) => {
+          if (!error) {
+            resolve({ code: 0, stdout, stderr, error: null, timedOut: false });
+            return;
+          }
+          const failure = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null };
+          if (typeof failure.code === "number") {
+            resolve({ code: failure.code, stdout, stderr, error: null, timedOut: false });
+            return;
+          }
+          const timedOut = failure.killed === true;
+          resolve({ code: null, stdout, stderr, error: timedOut ? "timed out" : failure.message, timedOut });
+        },
+      );
+      child.stdin?.end();
+    } catch (error) {
+      // Starting a process can throw outright, not only fail later: a sandbox
+      // that forbids it (EPERM) does, and so does a malformed path.
+      resolve({ code: null, stdout: "", stderr: "", error: error instanceof Error ? error.message : String(error), timedOut: false });
+    }
   });
