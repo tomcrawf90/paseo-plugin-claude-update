@@ -1,6 +1,6 @@
 import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 
-import type { UpdateSettings } from "../shared/settings";
+import { autoUpdateOn, type UpdateSettings } from "../shared/settings";
 import type { Activity, ClaudeProcess, Status } from "../shared/status";
 import { listClaudeProcesses, staleProcesses } from "./processes";
 import type { State } from "./store";
@@ -151,6 +151,7 @@ export function startService(
         previousVersion: state.previousVersion,
         rollbackCommand: state.previousVersion === null ? null : `claude install ${state.previousVersion}`,
         attention: state.attention,
+        autoInstall: settings !== null && settings.enabled && autoUpdateOn(settings),
         checking: activity !== null,
         activity,
         staleProcesses: stale,

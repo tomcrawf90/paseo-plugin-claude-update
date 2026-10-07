@@ -66,6 +66,8 @@ export const statusSchema = z.object({
   previousVersion: z.string().nullable(),
   rollbackCommand: z.string().nullable(),
   attention: attentionSchema.nullable(),
+  /** The schedule is on and installs what it finds: an update that is waiting needs nothing from the user. */
+  autoInstall: z.boolean(),
   checking: z.boolean(),
   /** Null when nothing is running; `checking` is true exactly when this is set. */
   activity: activitySchema.nullable(),

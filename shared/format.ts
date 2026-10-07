@@ -31,30 +31,33 @@ export function elapsed(ms: number): string {
   return `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, "0")} s`;
 }
 
-type Noticed = Pick<Status, "attention" | "staleProcesses" | "processListSupported">;
+/** The longest row title: longer ones wrap onto a second line in the Paseo sidebar. */
+export const SIDEBAR_TITLE_MAX = 20;
+
+type Noticed = Pick<Status, "attention" | "autoInstall">;
 
 /**
- * The sidebar row, or null for no row. The plugin stays out of the sidebar
- * until there is something to act on: an update waiting, a failure, a
- * mismatch, or an update that running processes have not picked up yet. The
- * row goes when the notice is dismissed or the thing is resolved.
+ * The sidebar row, or null for no row. There is a row only while the user has
+ * something to do or to know about: an update that will not install itself, a
+ * failure, a mismatch. An update that went in has none, whatever is still
+ * running the version before: that is on the status page. The row goes when
+ * the notice is dismissed or the thing is resolved. The title names the thing
+ * and stays within `SIDEBAR_TITLE_MAX`; the detail is on the status page.
  */
 export function sidebarRow(status: Noticed | null): { title: string; icon: string } | null {
   const attention = status?.attention ?? null;
   if (status === null || attention === null) return null;
   switch (attention.kind) {
-    case "updated": {
-      const old = status.staleProcesses.length;
-      // Everything is on the new version already: the update needs nothing from anyone.
-      if (status.processListSupported && old === 0) return null;
-      return { title: old === 0 ? "Claude Code updated" : `Claude Code updated · ${old} on an old version`, icon: "CircleCheck" };
-    }
+    case "updated":
+      return null;
     case "update-available":
-      return { title: "Claude Code update available", icon: "CircleArrowUp" };
-    case "failed":
-      return { title: "Claude Code update failing", icon: "TriangleAlert" };
+      // The next scheduled check installs it: nothing to do.
+      return status.autoInstall ? null : { title: "Claude update ready", icon: "CircleArrowUp" };
     case "pin-mismatch":
+      return status.autoInstall ? null : { title: "Claude pin mismatch", icon: "TriangleAlert" };
+    case "failed":
+      return { title: "Claude update failed", icon: "TriangleAlert" };
     case "channel-mismatch":
-      return { title: "Claude Code update needs a look", icon: "TriangleAlert" };
+      return { title: "Claude channel issue", icon: "TriangleAlert" };
   }
 }

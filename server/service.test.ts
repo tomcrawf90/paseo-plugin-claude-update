@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { harness, ok, settingsWith } from "../test/support";
+import { sidebarRow } from "../shared/format";
 import type { UpdateSettings } from "../shared/settings";
 import { startService, type Service } from "./service";
 
@@ -271,6 +272,9 @@ describe("status", () => {
       [100, "agent", "2.1.285", "Fix the login test"],
       [300, "daemon", "2.1.285", null],
     ]);
+    // Updated, with two processes still on the version before: on the page, and no sidebar row.
+    expect(status.attention?.kind).toBe("updated");
+    expect(sidebarRow(status)).toBeNull();
     expect(JSON.stringify(status)).not.toContain("hunter2");
     expect(status.history).toHaveLength(1);
     expect(status.dataDirectory).toBe("/memory");
@@ -285,6 +289,31 @@ describe("status", () => {
     const status = await s.status();
     expect(status.attention).toBeNull();
     expect(status.nextCheckAt).toBeNull();
+  });
+
+  it("says whether a waiting update installs itself, which decides the sidebar row", async () => {
+    const waiting = async (settings: UpdateSettings | null) => {
+      const h = harness("2.1.285", "2.1.292");
+      // A look only: the update is left waiting.
+      const s = startService(h.deps, async () => settings, NEVER);
+      if (settings !== null) await s.check("manual", false);
+      const status = await s.status();
+      s.stop();
+      return status;
+    };
+    const off = await waiting(settingsWith({ mode: "notify" }));
+    expect(off.attention?.kind).toBe("update-available");
+    expect(off.autoInstall).toBe(false);
+    expect(sidebarRow(off)?.title).toBe("Claude update ready");
+
+    const on = await waiting(settingsWith({ mode: "auto" }));
+    expect(on.attention?.kind).toBe("update-available");
+    expect(on.autoInstall).toBe(true);
+    expect(sidebarRow(on)).toBeNull();
+
+    // Auto-update on with the schedule off: nothing will install it.
+    expect((await waiting(settingsWith({ mode: "auto", enabled: false }))).autoInstall).toBe(false);
+    expect((await waiting(null)).autoInstall).toBe(false);
   });
 
   it("says so where processes cannot be listed", async () => {

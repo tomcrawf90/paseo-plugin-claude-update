@@ -27,6 +27,7 @@ const QUIET: Status = {
   previousVersion: null,
   rollbackCommand: null,
   attention: null,
+  autoInstall: false,
   checking: false,
   activity: null,
   staleProcesses: [],
@@ -41,6 +42,23 @@ const AVAILABLE: Status = {
   attention: { kind: "update-available", message: "Claude Code 2.1.300 is available.", at: "2026-10-07T10:00:00.000Z" },
 };
 
+const OLD_PROCESS = { pid: 4321, version: "2.1.285", kind: "agent" as const, agentId: null, title: null, startedAt: null };
+/** Just updated, with six processes still on the version before: what the owner's sidebar was showing a row for. */
+const UPDATED: Status = {
+  ...QUIET,
+  lastOutcome: "updated",
+  previousVersion: "2.1.285",
+  attention: { kind: "updated", message: "Updated Claude Code from 2.1.285 to 2.1.292.", at: "2026-10-07T10:00:00.000Z" },
+  autoInstall: true,
+  staleProcesses: Array.from({ length: 6 }, (_, index) => ({ ...OLD_PROCESS, pid: OLD_PROCESS.pid + index })),
+};
+const FAILED: Status = {
+  ...QUIET,
+  lastOutcome: "failed",
+  consecutiveFailures: 1,
+  attention: { kind: "failed", message: "Claude Code could not be updated.", at: "2026-10-07T10:00:00.000Z" },
+};
+
 type Command = { id: string; onSelect(context: unknown): void | Promise<void> };
 
 /** A pretend Paseo app: it records what the plugin registers and answers its calls. */
@@ -48,6 +66,8 @@ function app(answers: { status: Status; check?: Status }) {
   const fake = {
     answers,
     rows: [] as { id: string; title: string; icon: string; surface: string }[],
+    /** The most rows there have been at one moment. */
+    mostRows: 0,
     surfaces: [] as string[],
     settingsScreens: [] as string[],
     commands: [] as Command[],
@@ -75,6 +95,7 @@ function app(answers: { status: Status; check?: Status }) {
     addSidebarItem(row: { id: string; title: string; icon: string; surface: string }) {
       if (fake.rows.some((other) => other.id === row.id)) throw new Error(`Duplicate sidebar item: ${row.id}`);
       fake.rows.push(row);
+      fake.mostRows = Math.max(fake.mostRows, fake.rows.length);
       return () => {
         fake.rows = fake.rows.filter((other) => other !== row);
       };
@@ -124,7 +145,41 @@ describe("the plugin in the app", () => {
     const fake = app({ status: AVAILABLE });
     load(fake);
     await settle();
-    expect(fake.rows).toEqual([{ id: "status", title: "Claude Code update available", icon: "CircleArrowUp", surface: "status" }]);
+    expect(fake.rows).toEqual([{ id: "status", title: "Claude update ready", icon: "CircleArrowUp", surface: "status" }]);
+  });
+
+  it("adds no row after an update, with processes still on the version before", async () => {
+    const fake = app({ status: UPDATED });
+    load(fake);
+    await settle();
+    expect(fake.rows).toEqual([]);
+    expect(fake.mostRows).toBe(0);
+    // Reachable all the same.
+    await fake.select("open-status");
+    expect(fake.opened).toEqual(["surface:status"]);
+  });
+
+  it("adds no row for an update that the schedule is about to install", async () => {
+    const fake = app({ status: { ...AVAILABLE, autoInstall: true } });
+    load(fake);
+    await settle();
+    expect(fake.rows).toEqual([]);
+  });
+
+  it("has no row, then one, then none, and never two", async () => {
+    const fake = app({ status: QUIET });
+    load(fake);
+    await settle();
+    const seen: string[][] = [fake.rows.map((row) => row.title)];
+    // An update is out, it fails to install, it installs, and the notice is dismissed.
+    for (const next of [AVAILABLE, FAILED, AVAILABLE, UPDATED, QUIET]) {
+      fake.answers.check = next;
+      await fake.select("check-now");
+      await settle();
+      seen.push(fake.rows.map((row) => row.title));
+    }
+    expect(seen).toEqual([[], ["Claude update ready"], ["Claude update failed"], ["Claude update ready"], [], []]);
+    expect(fake.mostRows).toBe(1);
   });
 
   it("a check from the Command Center that finds nothing opens the page and leaves the sidebar empty", async () => {
@@ -144,7 +199,7 @@ describe("the plugin in the app", () => {
     await settle();
     await fake.select("check-now");
     await settle();
-    expect(fake.rows.map((row) => row.title)).toEqual(["Claude Code update available"]);
+    expect(fake.rows.map((row) => row.title)).toEqual(["Claude update ready"]);
     // Dismissed, or installed: the next status has no notice.
     fake.answers.check = QUIET;
     await fake.select("check-now");
