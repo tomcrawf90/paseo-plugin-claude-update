@@ -1,6 +1,7 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 
 import { UpdateSettingsScreen } from "./client/settings";
+import { createSidebarRow } from "./client/sidebar";
 import { StatusSurface } from "./client/status";
 import { sidebarIcon, sidebarTitle } from "./shared/format";
 import { checkNow, getStatus, type Status } from "./shared/status";
@@ -19,33 +20,14 @@ export default function contribute(client: PluginClientContext) {
 
   // The sidebar row is the one piece of the plugin that is always on screen,
   // so its title and icon carry the news: an update, a failure, a notice.
-  let removeSidebarItem: (() => void | Promise<void>) | null = null;
-  let shown = "";
-  let swap: Promise<void> = Promise.resolve();
-  function showSidebarItem(status: Status | null): void {
-    const title = sidebarTitle(status);
-    const icon = sidebarIcon(status);
-    if (`${title}|${icon}` === shown) return;
-    shown = `${title}|${icon}`;
-    const add = () => {
-      removeSidebarItem = client.addSidebarItem({ id: "status", title, icon, surface: SURFACE_ID });
-    };
-    // The first row is added while the entry runs. A later change waits for
-    // the old row to be gone before adding the new one under the same id.
-    if (removeSidebarItem === null) {
-      add();
-      return;
-    }
-    const remove = removeSidebarItem;
-    swap = swap
-      .then(async () => {
-        await remove();
-        if (!disposed) add();
-      })
-      .catch(() => undefined);
-  }
   let disposed = false;
-  showSidebarItem(null);
+  const sidebarRow = createSidebarRow(
+    ({ title, icon }) => client.addSidebarItem({ id: "status", title, icon, surface: SURFACE_ID }),
+    { title: sidebarTitle(null), icon: sidebarIcon(null) },
+  );
+  function showSidebarItem(status: Status | null): void {
+    sidebarRow.show({ title: sidebarTitle(status), icon: sidebarIcon(status) });
+  }
 
   async function refresh(): Promise<void> {
     try {
@@ -92,6 +74,7 @@ export default function contribute(client: PluginClientContext) {
 
   return () => {
     disposed = true;
+    sidebarRow.dispose();
     clearInterval(timer);
   };
 }
