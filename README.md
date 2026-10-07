@@ -54,7 +54,7 @@ Plugins → Claude Code updates**. A sidebar row appears by itself only when:
 | The row reads | When | It goes when |
 | --- | --- | --- |
 | Claude update ready | A newer version is out and will not install itself: auto-update is off, or scheduled checks are | You dismiss the notice, or the update is installed |
-| Claude update failed | An update was tried and did not go in, or three checks in a row have failed | You dismiss the notice, or a check works again |
+| Claude update failed | An update was tried and did not go in, or three checks in a row have failed | You dismiss the notice, or the update goes in. After failed checks alone, also when a check works again |
 | Claude pin mismatch | The installed version is not the pinned one, and auto-update is off | You dismiss the notice, or it matches again |
 | Claude channel issue | Claude Code's own channel is not the plugin's, so nothing was installed | You dismiss the notice, or they match again |
 
@@ -100,7 +100,7 @@ there yourself and choose `stable` here. The plugin never edits Claude Code's fi
 | Running sessions | Not touched. Claude Code keeps each version in its own file and keeps the versions that are in use, so an update does not pull the binary from under a live session. |
 | Restarts | None. It lists old processes and leaves restarting to you. |
 | A bad release | Roll back (below), or turn auto-update off, use the `stable` channel, or a pin. |
-| Failures | One attempt per check, no retry inside a check. After a failure the wait doubles (4 h, 8 h, 16 h, then 24 h at the default interval). An update that was tried and did not go in is told at once; a check that fails before that (no network, say) is told once, at the third failure in a row. |
+| Failures | One attempt per check, no retry inside a check. After a failure the wait doubles (4 h, 8 h, 16 h, then 24 h at the default interval). An update that was tried and did not go in is told at once (and again if it makes three failures in a row); a check that fails before that (no network, say) is told once, at the third failure in a row. |
 | Overlap | One check at a time. The CLI's installer also takes its own lock. |
 | Your environment | To find which agent a process belongs to it reads process environments on the host, takes only `PASEO_AGENT_ID` from them, and stores and logs nothing else. |
 
