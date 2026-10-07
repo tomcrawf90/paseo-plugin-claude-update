@@ -1,7 +1,7 @@
 # claude-update
 
 A [Paseo](https://paseo.sh) plugin that keeps the Claude Code CLI up to date on the machine your
-Paseo daemon runs on, and shows which running agents are still on an old version.
+Paseo daemon runs on. Its status page shows which running agents are still on an old version.
 
 ## Why
 
@@ -18,9 +18,9 @@ Claude Code** it also runs the CLI's own updater, `claude update`, and tells you
 | --- | --- |
 | Checks | Every 4 hours by default, it compares `claude --version` with the version the release channel points at. |
 | Updates | Off until you choose it. With "Auto-update Claude Code" on, the scheduled check runs `claude update` when the CLI is behind, then reads the version again to confirm. Until then it only tells you; "Update now" installs on request. |
-| Reports | A sidebar row that appears when there is something to act on, an entry in its status page, a macOS notification, and a log file. |
-| Lists old processes | Running Claude Code processes (Paseo agents and Claude's own background daemon) that are still on an older version. It never restarts or interrupts them. |
-| Stays out of the way | While Claude Code is up to date the plugin has no sidebar row and says nothing. A check that finds nothing new changes nothing you can see. |
+| Reports | An update that went in: on its status page and in the history there, with a macOS notification. Something you have to act on (an update waiting with auto-update off, a failure): a short sidebar row as well. Everything goes to a log file. |
+| Lists old processes | On the status page: running Claude Code processes (Paseo agents and Claude's own background daemon) that are still on an older version. It never restarts or interrupts them. |
+| Stays out of the way | While Claude Code is up to date, and after an update that worked, the plugin has no sidebar row and raises no toast, whatever is still running an older version. A check that finds nothing new changes nothing you can see. |
 
 New agents use the new version as soon as it is installed. Agents that are already running keep the
 version they started with until they are restarted; that is how Claude Code works, and the plugin
@@ -46,17 +46,21 @@ seconds after the plugin starts. A fresh install only tells you when an update i
 changes nothing; turn on **Auto-update Claude Code**, at the top of the status page or in the
 settings, to have it update on the schedule.
 
-**Where to find it.** The plugin has no sidebar row while there is nothing to act on. Open the
+**Where to find it.** The plugin has no sidebar row while there is nothing for you to do. Open the
 Command Center (⌘K) and choose "Claude Code updates: open status" for the status page, "Claude Code
 updates: check now", or "Claude Code updates: settings"; the settings are also under **Settings →
-Plugins → Claude Code updates**. A sidebar row appears by itself when:
+Plugins → Claude Code updates**. A sidebar row appears by itself only when:
 
 | The row reads | When | It goes when |
 | --- | --- | --- |
-| Claude Code update available | A newer version is out and has not been installed: auto-update is off, or "Check now" found it before the schedule did | You dismiss the notice, or the update is installed |
-| Claude Code updated · 3 on an old version | An update was installed and running processes are still on the version before | You dismiss the notice, or none of them is left (where processes cannot be listed, until dismissed) |
-| Claude Code update failing | Three checks in a row have failed | You dismiss the notice, or a check works again |
-| Claude Code update needs a look | The pin or the channel does not match what is installed | You dismiss the notice, or it matches again |
+| Claude update ready | A newer version is out and will not install itself: auto-update is off, or scheduled checks are | You dismiss the notice, or the update is installed |
+| Claude update failed | An update was tried and did not go in, or three checks in a row have failed | You dismiss the notice, or a check works again |
+| Claude pin mismatch | The installed version is not the pinned one, and auto-update is off | You dismiss the notice, or it matches again |
+| Claude channel issue | Claude Code's own channel is not the plugin's, so nothing was installed | You dismiss the notice, or they match again |
+
+The row opens the status page, which has the detail. An update that went in never has a row: it is
+on the status page and in its history, with a macOS notification if those are on. Processes still on
+an older version are listed on the status page and nowhere else.
 
 **Auto-update Claude Code.** On: the next scheduled check installs a new version by itself, with
 `claude update`. Off: you are only told. Either way, agents that are already running keep the
@@ -81,7 +85,7 @@ Settings are per daemon host, under **Settings → Plugins → Claude Code updat
 | Check every (hours) | 4 | 1 to 168. |
 | Pinned version | empty | An exact version such as `2.1.285`. While set, the plugin holds the CLI at that version with `claude install <version>` and never updates. |
 | Path to claude | empty | Empty looks in `~/.local/bin/claude`, then on the daemon's `PATH`. |
-| Desktop notifications | on | A macOS notification after an update and after three failed checks in a row. |
+| Desktop notifications | on | A macOS notification after an update, after an update that failed, and after three failed checks in a row. |
 
 **Channel.** `claude update` follows Claude Code's own channel, the `autoUpdatesChannel` key in
 `~/.claude/settings.json` (`latest` when unset), not this plugin's setting. If the two differ the
@@ -96,7 +100,7 @@ there yourself and choose `stable` here. The plugin never edits Claude Code's fi
 | Running sessions | Not touched. Claude Code keeps each version in its own file and keeps the versions that are in use, so an update does not pull the binary from under a live session. |
 | Restarts | None. It lists old processes and leaves restarting to you. |
 | A bad release | Roll back (below), or turn auto-update off, use the `stable` channel, or a pin. |
-| Failures | One attempt per check, no retry inside a check. After a failure the wait doubles (4 h, 8 h, 16 h, then 24 h at the default interval). You are told once, at the third failure in a row. |
+| Failures | One attempt per check, no retry inside a check. After a failure the wait doubles (4 h, 8 h, 16 h, then 24 h at the default interval). An update that was tried and did not go in is told at once; a check that fails before that (no network, say) is told once, at the third failure in a row. |
 | Overlap | One check at a time. The CLI's installer also takes its own lock. |
 | Your environment | To find which agent a process belongs to it reads process environments on the host, takes only `PASEO_AGENT_ID` from them, and stores and logs nothing else. |
 
@@ -135,7 +139,7 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 - The channel check reads `autoUpdatesChannel` from `~/.claude/settings.json` only. Claude Code can also take it from managed settings (on macOS `/Library/Application Support/ClaudeCode/managed-settings.json`) or a project's `.claude/settings.json`, which the plugin does not read, so with one of those set `claude update` may follow a channel other than the one the plugin compared against.
 - An update that is running when the plugin is reloaded or the daemon stops may be cut short; the next check tries again.
 
-Not verified at the time of writing (0.2.0): how the status page, settings screen and sidebar row
+Not verified at the time of writing (0.2.1): how the status page, settings screen and sidebar row
 look in the Paseo app (they were drawn outside it, from the bundle a Paseo daemon builds), and
 whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in a real Paseo
 0.10.3 daemon against a throwaway copy of the CLI.

@@ -112,7 +112,7 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
           />
           <SettingsSwitch
             label="Desktop notifications"
-            hint="A macOS notification after an update and after three failures in a row."
+            hint="A macOS notification after an update, after an update that failed, and after three failed checks in a row."
             value={values.desktopNotifications}
             disabled={saving}
             onValueChange={(desktopNotifications) => void apply({ desktopNotifications })}

@@ -24,7 +24,7 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | Step | Command or action | Done |
 | --- | --- | --- |
 | Install it in your own Paseo and use it | `paseo plugin install /Users/tom/Documents/GitHub/paseo-plugin-claude-update`, then `paseo plugin ls` | no |
-| Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the auto-update switch, the spinner on "Check now" and "Update now", the result line), settings screen, the sidebar row appearing with news and going when it is dismissed | no |
+| Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the auto-update switch, the spinner on "Check now" and "Update now", the result line), settings screen, the sidebar row ("Claude update ready", on one line) appearing while an update waits with auto-update off and going when it is dismissed or installed, and no row after an update | no |
 | Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have not been seen in the app. | no |
 | Set the release date | Replace `unreleased` in `CHANGELOG.md` | no |
 | Verify | `npm run verify` and `npm pack --dry-run` | passes on 2026-10-07 |
@@ -41,7 +41,7 @@ npm pack --dry-run          # check the file list below
 npm publish --access public
 
 # 3. Check the published package installs
-paseo plugin install npm:paseo-plugin-claude-update@0.2.0
+paseo plugin install npm:paseo-plugin-claude-update@0.2.1
 ```
 
 `npm pack --dry-run` on 2026-10-07 (24 files, 30.2 kB packed, 99.9 kB unpacked): `CHANGELOG.md`,
@@ -84,7 +84,7 @@ Reads process environments on the host to match processes to agents; only the Pa
 | --- | --- | --- |
 | Name | The registry id | `claude-update` |
 | Description, author, licence | `package.json`, `paseo-plugin.json`, `README.md` | Filled in |
-| Version | The published npm version, which must match `package.json` in the repository | `0.2.0` |
+| Version | The published npm version, which must match `package.json` in the repository | `0.2.1` |
 | Install notes | The `## Install` section of `README.md`, quoted as written | Written |
 | Limitations | The `## Limitations` section of `README.md`, plus the caveats above | Written |
 | Screenshots | Every image in `images/` | **Missing**: see step 2 |

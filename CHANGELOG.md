@@ -2,6 +2,14 @@
 
 All notable changes to this plugin are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## 0.2.1 - unreleased
+
+- No sidebar row after an update, and none for processes still on an older version: those are listed on the status page only. An update that went in is on the status page and in the history, with a macOS notification if those are on; it no longer raises a toast.
+- The row is there only for something to act on, and its title fits on one line (20 characters at most): "Claude update ready", "Claude update failed", "Claude pin mismatch", "Claude channel issue".
+- No row for an update that the next scheduled check installs by itself (auto-update on, schedule on), such as one found by "Check now".
+- An update that was tried and did not go in is told at once, in the row, on the status page and by macOS notification. Before, it waited for the third failure in a row, as a failed check still does.
+- The status RPC reports `autoInstall`: whether the schedule installs what it finds.
+
 ## 0.2.0 - unreleased
 
 - No sidebar row while Claude Code is up to date. The row appears for an update that is waiting, a failure, a mismatch, or an update that running processes have not picked up yet, and goes when the notice is dismissed or resolved. The status page is opened from the Command Center ("Claude Code updates: open status").

@@ -26,7 +26,7 @@ slots below are empty on purpose rather than filled with mock-ups. Capture each 
 <table>
 <tr><th>Name</th><td>claude-update</td></tr>
 <tr><th>Description</th><td>Paseo plugin: keeps the Claude Code CLI up to date on the daemon host, where its own updater never runs</td></tr>
-<tr><th>Version</th><td>0.2.0</td></tr>
+<tr><th>Version</th><td>0.2.1</td></tr>
 <tr><th>npm package</th><td><code>paseo-plugin-claude-update</code> (proposed, not published)</td></tr>
 <tr><th>Repository</th><td><code>tomcrawf90/paseo-plugin-claude-update</code> (proposed, does not exist yet)</td></tr>
 <tr><th>Author, licence</th><td>Tom Crawford, MIT</td></tr>
@@ -50,9 +50,9 @@ slots below are empty on purpose rather than filled with mock-ups. Capture each 
 </ul>
 
 <h2>Screenshots to capture</h2>
-<div class="shot"><div class="slot">images/status.png<br>not captured</div><div><strong>Status page after an update.</strong> Command Center → "Claude Code updates: open status", or the sidebar row while it is there. Shows the "Auto-update Claude Code" switch, the notice, installed and target version, last and next check, the rollback command, processes still on an older version, and history.</div></div>
+<div class="shot"><div class="slot">images/status.png<br>not captured</div><div><strong>Status page after an update.</strong> Command Center → "Claude Code updates: open status" (there is no sidebar row after an update). Shows the "Auto-update Claude Code" switch, the notice, installed and target version, last and next check, the rollback command, processes still on an older version, and history.</div></div>
 <div class="shot"><div class="slot">images/settings.png<br>not captured</div><div><strong>Settings screen.</strong> Settings → Plugins → Claude Code updates. Shows the "Auto-update Claude Code" switch, the schedule switch, channel, notifications, interval, pinned version and path.</div></div>
-<div class="shot"><div class="slot">images/sidebar.png<br>not captured</div><div><strong>Sidebar row, present only with news.</strong> The row reads "Claude Code update available" with an arrow, "Claude Code updated · 3 on an old version" with a tick, or "Claude Code update failing" with a warning sign. There is no row while Claude Code is up to date.</div></div>
+<div class="shot"><div class="slot">images/sidebar.png<br>not captured</div><div><strong>Sidebar row, present only when there is something to do.</strong> With auto-update off and an update out, the row reads "Claude update ready" with an arrow, on one line; after an update that failed it reads "Claude update failed" with a warning sign. There is no row while Claude Code is up to date or after an update, even with processes still on an older version.</div></div>
 <div class="shot"><div class="slot">images/status-updating.png<br>not captured</div><div><strong>Status page while an update runs.</strong> Press "Update now". Shows the spinner on the button, "Updating Claude Code…" and the line counting the seconds.</div></div>
 <div class="shot"><div class="slot">images/status-compact.png<br>not captured</div><div><strong>Status page in a narrow window or on a phone, in a dark theme.</strong> Checks the compact layout and that every text colour comes from the theme.</div></div>
 </body>
