@@ -205,11 +205,9 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
     onSuccess(next) {
       queryClient.setQueryData(STATUS_QUERY_KEY, next);
       // The result is shown on this page, where it was asked for. Only a
-      // change to the install, or a failure, is worth a toast as well.
+      // failure is worth a toast as well.
       setResult(resultOf(next, Date.now()));
-      const message = next.lastMessage ?? "Checked.";
-      if (next.lastOutcome === "failed") toast.error(message);
-      else if (next.lastOutcome === "updated" || next.lastOutcome === "pin-applied") toast.show(message, { variant: "success", durationMs: 5000 });
+      if (next.lastOutcome === "failed") toast.error(next.lastMessage ?? "The check failed.");
     },
     onError(error) {
       const message = error instanceof Error ? error.message : "The check could not be run.";
