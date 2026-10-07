@@ -116,6 +116,7 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 - The schedule runs only while the Paseo daemon is running and the plugin is enabled. A check missed while the machine slept runs within a minute of waking.
 - Paseo gives plugin server code no notification of its own, so outside the app the only notice is the macOS notification.
 - `claude update` follows Claude Code's own channel; this plugin cannot choose a different one for it.
+- The channel check reads `autoUpdatesChannel` from `~/.claude/settings.json` only. Claude Code can also take it from managed settings (on macOS `/Library/Application Support/ClaudeCode/managed-settings.json`) or a project's `.claude/settings.json`, which the plugin does not read, so with one of those set `claude update` may follow a channel other than the one the plugin compared against.
 - An update that is running when the plugin is reloaded or the daemon stops may be cut short; the next check tries again.
 
 Not verified at the time of writing (0.1.0): how the status page, settings screen, sidebar row and
