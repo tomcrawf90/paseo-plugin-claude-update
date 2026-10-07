@@ -21,17 +21,32 @@ export default function contribute(client: PluginClientContext) {
   // so its title and icon carry the news: an update, a failure, a notice.
   let removeSidebarItem: (() => void | Promise<void>) | null = null;
   let shown = "";
+  let swap: Promise<void> = Promise.resolve();
   function showSidebarItem(status: Status | null): void {
     const title = sidebarTitle(status);
     const icon = sidebarIcon(status);
     if (`${title}|${icon}` === shown) return;
     shown = `${title}|${icon}`;
-    void removeSidebarItem?.();
-    removeSidebarItem = client.addSidebarItem({ id: "status", title, icon, surface: SURFACE_ID });
+    const add = () => {
+      removeSidebarItem = client.addSidebarItem({ id: "status", title, icon, surface: SURFACE_ID });
+    };
+    // The first row is added while the entry runs. A later change waits for
+    // the old row to be gone before adding the new one under the same id.
+    if (removeSidebarItem === null) {
+      add();
+      return;
+    }
+    const remove = removeSidebarItem;
+    swap = swap
+      .then(async () => {
+        await remove();
+        if (!disposed) add();
+      })
+      .catch(() => undefined);
   }
+  let disposed = false;
   showSidebarItem(null);
 
-  let disposed = false;
   async function refresh(): Promise<void> {
     try {
       const status = await client.rpc(getStatus, {});

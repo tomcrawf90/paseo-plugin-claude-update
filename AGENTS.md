@@ -61,8 +61,9 @@ env -i HOME=$S PATH=/usr/bin:/bin USER=$USER $S/.local/bin/claude doctor </dev/n
 
 `env -i` matters: a shell inside a Claude session has `CLAUDE_CODE_EXECPATH` pointing at the real
 binary. On macOS, wrap commands in `sandbox-exec -f profile.sb` with a profile that denies
-`file-write*` under the real `~/.local`, `~/.claude*` and `~/.paseo` for a hard guarantee (it also
-blocks `ps`, so the process list reads as unsupported there).
+`file-write*` under the real `~/.local`, `~/.claude*` and `~/.paseo` for a hard guarantee (in the
+2026-10-07 run `ps` failed to start with EPERM under such a profile, cause not confirmed, so the
+process list read as unsupported there).
 
 To run the plugin itself, use a second daemon with its own home and port, never the live one:
 
@@ -111,9 +112,10 @@ only version the plugin has been typechecked and run against.
 | --- | --- |
 | `claude update` with no terminal, from a plugin subprocess | Verified 2026-10-07 on macOS with CLI 2.1.285 → 2.1.292 in a throwaway daemon and home. |
 | `claude install <version>` with no terminal | Verified the same way (used for a pin and as the rollback). |
-| Status page, settings screen, sidebar row, toasts in the app | Not seen in the app. Typechecked only. Re-registering the sidebar item to change its title is an assumption about `addSidebarItem`. |
-| macOS notification raised from the daemon | Not confirmed. One was raised during the throwaway-daemon run, but errors from it are swallowed by design and nobody was watching the screen. |
-| Listing old processes | The plugin's own code was run read-only on the host on 2026-10-07 and classified 11 live processes correctly (agents, Claude's daemon, a leftover 2.1.269 process). Not exercised through a daemon: the sandbox used for the throwaway daemon blocks `ps`. |
+| Status page, settings screen, sidebar row, toasts in the app | Not seen in the app. Typechecked only. Changing the sidebar row by removing and re-adding it is an assumption about `addSidebarItem` in 0.10; Paseo 0.11 documents runtime add and remove for its newer `addSidebarHeaderItem`/`addSidebarFooterItem` and calls `addSidebarItem` deprecated. |
+| Cost of the status call | `status.get` runs `ps`, `lsof` and an agent list each time, and is polled every 60 s by each connected app and every 30 s by an open status page. Fine on one machine; a lighter notice-only call is the obvious next step if it ever matters. |
+| macOS notification raised from the daemon | Not confirmed. One may have been raised during the throwaway-daemon run; errors from it are swallowed by design and nobody was watching the screen. |
+| Listing old processes | The plugin's own code was run read-only on the host on 2026-10-07 and classified 11 live processes correctly (agents, Claude's daemon, a leftover 2.1.269 process). Not exercised through a daemon: in the sandboxed throwaway daemon `ps` failed to start (EPERM). |
 | Linux, Windows | Untested. The process list and notifications are macOS only by design. |
 | Homebrew, WinGet, npm installs of Claude Code | Not supported; `claude update` is for the native installer. |
 | An update cut short by a plugin reload or daemon stop | Not tested. The CLI is assumed to leave the old version in place. |
