@@ -1,0 +1,7 @@
+{
+  "id": "claude-update",
+  "description": "Keeps the Claude Code CLI up to date on this host and shows which running agents are still on an old version.",
+  "requirements": {
+    "paseo": ">=0.10.3"
+  }
+}
