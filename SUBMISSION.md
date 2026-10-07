@@ -1,7 +1,8 @@
 # Publishing and submitting to Paseo Cafe
 
-Nothing here has been done. The repository is local only: no GitHub repository, no npm package, no
-registry entry. Every step below is the owner's decision.
+The GitHub repository exists and is public: <https://github.com/tomcrawf90/paseo-plugin-claude-update>.
+Nothing else here has been done: no release tag, no npm package, no registry entry. Every step
+below is the owner's decision. How a version is released is in [RELEASING.md](RELEASING.md).
 
 Sources, read 2026-10-07: <https://paseo.cafe/submit>, the registry repository
 <https://github.com/paseo-cafe/paseo-cafe> (README, `.github/ISSUE_TEMPLATE/plugin-submission.yml`,
@@ -14,7 +15,7 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | --- | --- | --- | --- |
 | 1 | Plugin id | `claude-update` | It is the registry filename, the id in `paseo-plugin.json` and the name on the listing. Changing it later is a new listing. Free on Paseo Cafe on 2026-10-07. |
 | 2 | npm package name | `paseo-plugin-claude-update` (unscoped) | Free on npm on 2026-10-07. Alternative: a scope, e.g. `@tomcrawf90/paseo-claude-update` (138 of 231 listed plugins are scoped). Change `name` in `package.json` and the install line in `README.md` if you choose another. |
-| 3 | GitHub repository | `tomcrawf90/paseo-plugin-claude-update`, public | Paseo Cafe needs a public GitHub repository. `package.json` (`homepage`, `repository`, `bugs`) already points at this name; edit it if you choose another. |
+| 3 | GitHub repository | `tomcrawf90/paseo-plugin-claude-update`, public. Decided: it exists | Paseo Cafe needs a public GitHub repository. `package.json` (`homepage`, `repository`, `bugs`) points at it, and npm provenance checks that it does. |
 | 4 | Licence and author | MIT, "Tom Crawford" | In `LICENSE` and `package.json`. 216 of 231 listed plugins are MIT. |
 | 5 | Supported Paseo versions | `>=0.10.3 <0.12.0 \|\| >=0.11.0-beta.1 <0.12.0` | Typechecked and run against 0.10.3 only. The second half lets 0.11 betas load it, which a plain `>=0.10.3` does not (a prerelease only matches a range that names one). Untested on 0.11; 0.12 needs a new release. Lowering the minimum needs a test on the older version. |
 | 6 | First-run behaviour | Auto-update off: a fresh install reports an available update and changes nothing until the user turns on "Auto-update Claude Code" | Installing a plugin should not change the host's CLI unasked. The alternative is to default to installing (`mode` in `shared/settings.ts`). |
@@ -23,31 +24,30 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 
 | Step | Command or action | Done |
 | --- | --- | --- |
-| Install it in your own Paseo and use it | `paseo plugin install /Users/tom/Documents/GitHub/paseo-plugin-claude-update`, then `paseo plugin ls` | no |
+| Install it in your own Paseo and use it | `paseo plugin install /absolute/path/to/paseo-plugin-claude-update` (your checkout), then `paseo plugin ls` | no |
 | Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the auto-update switch, the spinner on "Check now" and "Update now", the result line), settings screen, the sidebar row ("Claude update ready", on one line) appearing while an update waits with auto-update off and going when it is dismissed or installed, and no row after an update | no |
 | Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have not been seen in the app. | no |
-| Set the release date | Replace `unreleased` in `CHANGELOG.md` | no |
+| Set the release date | `npm run release:prepare -- 0.2.1` on a release branch dates the `CHANGELOG.md` entry (RELEASING.md) | no |
 | Verify | `npm run verify` and `npm pack --dry-run` | passes on 2026-10-07 |
 
 ## 3. Publish
 
-```bash
-# 1. GitHub (public)
-gh repo create tomcrawf90/paseo-plugin-claude-update --public --source . --remote origin --push
+Publishing is done by the release workflow when a tag is pushed, not by hand. The one-time npm
+setup (an account, a token for the first release, the trusted publisher after it) and the release
+steps are in [RELEASING.md](RELEASING.md).
 
-# 2. npm (needs `npm login` first; this machine is not logged in)
-npm run verify
-npm pack --dry-run          # check the file list below
-npm publish --access public
+| # | Step | Done |
+| --- | --- | --- |
+| 1 | GitHub repository, public | yes |
+| 2 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md "Once, before the first release") | no |
+| 3 | Release pull request for 0.2.1, merged; tag `v0.2.1` pushed from `main` | no |
+| 4 | The Release workflow ended green: the package is on npm and the GitHub release exists | no |
+| 5 | The published package installs: `paseo plugin install npm:paseo-plugin-claude-update@0.2.1` | no |
 
-# 3. Check the published package installs
-paseo plugin install npm:paseo-plugin-claude-update@0.2.1
-```
-
-`npm pack --dry-run` on 2026-10-07 (24 files, 30.2 kB packed, 99.9 kB unpacked): `CHANGELOG.md`,
+`npm pack --dry-run` on 2026-10-07 (24 files, 31.3 kB packed, 103.9 kB unpacked): `CHANGELOG.md`,
 `LICENSE`, `README.md`, `package.json`, `paseo-plugin.json`, `index.client.tsx`, `index.server.ts`,
 `client/{settings,status}.tsx`, `client/{activity,bus,sidebar}.ts`, `server/{claude,notify,paths,processes,run,service,store,updater}.ts`,
-`shared/{format,settings,status,version}.ts`. Tests, the stub, CI and these notes are not published.
+`shared/{format,settings,status,version}.ts`. Tests, the stub, the release script, CI and these notes are not published.
 
 ## 4. Submit to Paseo Cafe
 
@@ -103,19 +103,20 @@ Reads process environments on the host to match processes to agents; only the Pa
 | `requirements.paseo` is a valid range for 0.8 or later | Met (`>=0.10.3 <0.12.0 \|\| >=0.11.0-beta.1 <0.12.0`; every branch's minimum is above 0.9.0-beta.1, so `description` is allowed) |
 | No source file (`.ts`, `.tsx`, `.js`, `.jsx`), comments and tests included, contains the text of a synchronous process call, a shell `-c` invocation, or a command-line download tool | Met. The plugin starts processes with `execFile` only |
 | Imports stay inside `client/`, `server/`, `shared/`; no Node modules in client or shared code | Met |
-| No symlinks; at most 200 files and 2 MB | Met (37 files, 0.3 MB) |
+| No symlinks; at most 200 files and 2 MB | Met (57 files, 0.5 MB) |
 | The npm tarball passes the same scan | Not run: the real scanner runs only after submission |
 
 ## 7. After it is listed
 
-Paseo Cafe rescans npm every 15 minutes and Git every six hours. To release an update: change the
-version in `package.json`, add a `CHANGELOG.md` entry, commit, push, `npm publish`. No new
-submission is needed. An unreleased build can be offered as a preview by publishing it under the
-npm `next` tag.
+Paseo Cafe rescans npm every 15 minutes and Git every six hours. To release an update, follow
+[RELEASING.md](RELEASING.md): a release pull request that bumps the version and dates the changelog,
+then a tag `vX.Y.Z` on `main`, which publishes. No new submission is needed. Paseo Cafe wants the
+npm version and the version in the repository's `package.json` to be the same, which is why `main`
+keeps the released version between releases.
 
 ## Could not be determined
 
 - Whether the real scanner passes: it runs on submission. The local pre-check covers its published rules only.
 - How long review takes, and whether a human reviews beyond the automated checks. The site says listings are not reviewed or vouched for.
 - Whether Paseo Cafe will accept `name`, `icon` and `media` in the manifest later. Its scanner rejected them on 2026-10-07.
-- The official Paseo registry (<https://github.com/getpaseo/plugins>, `paseo plugin add owner/slug`) is a separate listing with its own rules, including a required `OVERVIEW.md`. It was not prepared here.
+- The official Paseo registry (<https://github.com/getpaseo/plugins>, `paseo plugin add owner/slug`) is a separate listing with its own rules, including a required `OVERVIEW.md` in the repository and in the npm package (so in `files`). It was not prepared here. Its ownership rule accepts a package with npm provenance from anyone, which the release workflow provides.

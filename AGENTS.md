@@ -23,7 +23,12 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. Three modules hold logic apart from React Native so it can be tested: `client/sidebar.ts` (adding, changing and removing the row, one change at a time), `client/activity.ts` (what the buttons and the progress line say) and `client/bus.ts` (passes each status read to the sidebar row). `test/client-entry.test.ts` runs the entry against a pretend app. |
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
 | `test/cafe-scan.mjs` | Local copy of the Paseo Cafe scanner's rules. |
-| `docs/listing-preview.html`, `SUBMISSION.md` | Listing preview and the publish and submission checklist. |
+| `docs/listing-preview.html`, `SUBMISSION.md` | Listing preview and the Paseo Cafe submission checklist. |
+| `scripts/release.mjs` | The release checks (`check`, `unpublished`, `notes`) and the version bump (`prepare`). Plain Node, no dependencies; `scripts/release.test.mjs` tests it. Not published. |
+| `.github/workflows/ci.yml` | Verify on Linux and macOS with Node 22 and 24, lint the workflows, and one `CI passed` check for branch protection. |
+| `.github/workflows/release.yml` | Runs on a pushed tag `vX.Y.Z`: verify, publish to npm, GitHub release. npm names this file as the trusted publisher, so do not rename it. |
+| `RELEASING.md` | The release steps, the one-time npm setup, what to do when a release fails, the repository settings to switch on. |
+| `CONTRIBUTING.md`, `SECURITY.md`, `.github/` templates, `.github/dependabot.yml` | For people outside. Dependabot leaves `@getpaseo/plugin`, `react`, `react-native` and `@types/react` alone: they follow the supported Paseo version. |
 
 Code lives only in `client/`, `server/`, `shared/` and the two entries; a module at the root does not compile in Paseo.
 
@@ -34,8 +39,10 @@ npm install
 npm run typecheck
 npm test            # vitest; uses test/stub/claude, no network, no real install
 npm run lint:cafe   # Paseo Cafe pre-check
-npm run verify      # all three
+npm run check:release   # package.json and the top CHANGELOG.md entry name the same version
+npm run verify      # all four
 npm pack --dry-run  # exactly what would be published
+actionlint          # after changing a workflow (CI runs it too)
 ```
 
 The stub keeps its "installed version" in files under `STUB_CLAUDE_DIR` (see the comments at its
@@ -93,7 +100,8 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 
 ## Conventions
 
-- Commits: one logical change each, imperative subject in sentence case, on `main` until there is a remote.
+- Commits: one logical change each, imperative subject in sentence case. Changes reach `main` through a pull request (<https://github.com/tomcrawf90/paseo-plugin-claude-update>); nothing is pushed to `main` directly.
+- Workflows: actions pinned to a commit with the version in a comment (Dependabot updates both), `permissions: {}` at the top and the least each job needs, no secret but the optional `NPM_TOKEN`. The job that publishes installs no dependencies and runs no package script.
 - No credentials in code, tests, logs or commits. `ps -E` output contains every process's environment: take `PASEO_AGENT_ID` from it and nothing else, and never log or store the raw text.
 - The install changes only through `claude update` and `claude install <version>`. Never download a release, write under `~/.local/share/claude`, relink `~/.local/bin/claude`, or read-modify-write `~/.claude.json` or `~/.claude/settings.json` (the latter is read, never written). That rule is about this plugin's code. The CLI's own installer does write there: `claude install <version>` (pin and rollback) rewrites `installMethod`, `autoUpdates` and `autoUpdatesProtectedForNative` in `~/.claude.json`, so never describe the plugin as leaving that file untouched.
 - Never restart, stop or message an agent. The plugin lists old processes and stops there.
@@ -109,11 +117,16 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 
 ## Releases
 
-1. Change `version` in `package.json` (semantic versioning; Paseo Cafe detects updates by this number, so never reuse one).
-2. Add a dated entry to `CHANGELOG.md`.
-3. `npm run verify` and `npm pack --dry-run`.
-4. Commit, tag `v<version>`, and, once there is a remote, push.
-5. Publishing to npm and submitting to Paseo Cafe are the owner's decisions; the steps and every form field are in [SUBMISSION.md](SUBMISSION.md). After the first listing, a new npm version is picked up without a new submission.
+`package.json` holds the version. Every released version is a tag `vX.Y.Z` on `main`, and pushing
+that tag is what publishes. [RELEASING.md](RELEASING.md) has every step; in short:
+
+1. Between releases, a change a user would notice gets a line under `## Unreleased` at the top of `CHANGELOG.md`, and `package.json` keeps the version that is on npm.
+2. On a release branch: `npm run release:prepare -- <patch|minor|major>` (or an exact version) bumps `package.json` and `package-lock.json` and dates the changelog entry. Semantic versioning; Paseo Cafe detects updates by this number, so never reuse one.
+3. `npm run verify` and `npm pack --dry-run`, commit, pull request, merge.
+4. Tag `main` (`git tag -a v<version> -m <version>`) and push the tag. `.github/workflows/release.yml` checks the tag against `package.json` and the changelog, verifies, publishes to npm and creates the GitHub release. Tagging, and so publishing, is the owner's decision: an agent prepares the release pull request and stops.
+5. Submitting to Paseo Cafe is the owner's decision too; every form field is in [SUBMISSION.md](SUBMISSION.md). After the first listing, a new npm version is picked up without a new submission.
+
+Never run `npm publish` by hand, never move or reuse a tag, and never put a token in the repository.
 
 If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plugin.json`, the
 `@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3 <0.12.0 || >=0.11.0-beta.1 <0.12.0`: 0.10.3 is the
@@ -134,6 +147,7 @@ plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it 
 | macOS notification raised from the daemon | Not confirmed. One may have been raised during the throwaway-daemon run; errors from it are swallowed by design and nobody was watching the screen. |
 | Listing old processes | Verified through a live 0.10.3 daemon on 2026-10-07 (`status.get`): supported, and it reported the one process on an old version (a leftover 2.1.269) while the ten on the installed version were not listed. A home directory with a space in it is covered by tests only. |
 | A manual look-only check | Verified through a live daemon the same day: `status.check` with `apply: false` reported 2.1.285 against 2.1.292 and ran only `claude --version`. |
+| The release workflow | Never run (2026-10-07): no tag has been pushed and nothing is on npm. `actionlint` passes and the checks it calls are tested; publishing by token and by trusted publisher are both unseen. See "Not verified" in `RELEASING.md`. |
 | Linux, Windows | Untested. The process list and notifications are macOS only by design. |
 | Homebrew, WinGet, npm installs of Claude Code | Not supported; `claude update` is for the native installer. |
 | An update cut short by a plugin reload or daemon stop | Not tested. The CLI is assumed to leave the old version in place. |
