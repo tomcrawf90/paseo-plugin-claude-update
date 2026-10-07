@@ -14,19 +14,20 @@ import {
 import { useRef, useState } from "react";
 
 import {
+  AUTO_UPDATE_LABEL,
+  AUTO_UPDATE_OFF,
+  AUTO_UPDATE_ON,
+  AUTO_UPDATE_SAFETY,
+  autoUpdateOn,
   MAX_INTERVAL_HOURS,
   MIN_INTERVAL_HOURS,
   updateSettings,
+  withAutoUpdate,
   type Channel,
-  type Mode,
   type UpdateSettings,
 } from "../shared/settings";
 import { isExactVersion } from "../shared/version";
 
-const MODE_OPTIONS: readonly { label: string; value: Mode }[] = [
-  { label: "Install updates", value: "auto" },
-  { label: "Only tell me", value: "notify" },
-];
 const CHANNEL_OPTIONS: readonly { label: string; value: Channel }[] = [
   { label: "latest", value: "latest" },
   { label: "stable", value: "stable" },
@@ -84,23 +85,22 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
     <>
       <SettingsSection
         title="Claude Code updates"
-        info="Claude Code only updates itself from its terminal interface. Paseo runs it without one, so this plugin runs the CLI's own updater on a schedule."
+        info="Claude Code only updates itself from its terminal interface. Paseo runs it without one, so this plugin runs the CLI's own updater on a schedule. It stays out of the sidebar until there is something to act on; open its status page from the Command Center with “Claude Code updates: open status”."
       >
         <SettingsCard>
           <SettingsSwitch
+            label={AUTO_UPDATE_LABEL}
+            hint={`${autoUpdateOn(values) ? AUTO_UPDATE_ON : AUTO_UPDATE_OFF} ${AUTO_UPDATE_SAFETY}`}
+            value={autoUpdateOn(values)}
+            disabled={saving}
+            onValueChange={(on) => void apply(withAutoUpdate(values, on))}
+          />
+          <SettingsSwitch
             label="Check on a schedule"
-            hint="Off stops every scheduled check. Check now and Update now still work."
+            hint="Off stops every scheduled check, so nothing is found or installed by itself. Check now and Update now still work."
             value={values.enabled}
             disabled={saving}
             onValueChange={(enabled) => void apply({ enabled })}
-          />
-          <SettingsSelect
-            label="When an update is found"
-            hint="Installing uses “claude update”. Running agents are never restarted."
-            value={values.mode}
-            options={MODE_OPTIONS}
-            disabled={saving}
-            onValueChange={(mode) => void apply({ mode })}
           />
           <SettingsSelect
             label="Channel"

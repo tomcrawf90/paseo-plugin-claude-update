@@ -19,9 +19,12 @@ export const updateSettings = defineSettings({
     /** The disable switch: off means no scheduled checks at all. */
     enabled: z.boolean().default(true),
     /**
-     * `notify` only reports that an update is available; `auto` installs it on
-     * the schedule. A fresh install starts on `notify`, so that installing the
-     * plugin never changes the CLI before its owner has chosen that.
+     * The "Auto-update Claude Code" switch: `auto` is on, and the scheduled
+     * check installs what it finds; `notify` is off, and it only reports. It
+     * is stored under these two words, as it was when the setting was a choice
+     * of two, so a settings file from 0.1.0 reads as it always did. A fresh
+     * install starts on `notify`, so that installing the plugin never changes
+     * the CLI before its owner has chosen that.
      */
     mode: z.enum(MODES).default("notify"),
     /** The release channel the installed version is compared against. */
@@ -42,3 +45,19 @@ export const updateSettings = defineSettings({
 export type UpdateSettings = z.infer<typeof updateSettings.schema>;
 
 export const DEFAULT_SETTINGS: UpdateSettings = updateSettings.schema.parse({});
+
+/** Whether the "Auto-update Claude Code" switch is on. */
+export function autoUpdateOn(settings: Pick<UpdateSettings, "mode">): boolean {
+  return settings.mode === "auto";
+}
+
+/** The same settings with the switch moved; nothing else changes. */
+export function withAutoUpdate(settings: UpdateSettings, on: boolean): UpdateSettings {
+  return { ...settings, mode: on ? "auto" : "notify" };
+}
+
+export const AUTO_UPDATE_LABEL = "Auto-update Claude Code";
+export const AUTO_UPDATE_ON = "On: the next scheduled check installs a new version by itself, with “claude update”.";
+export const AUTO_UPDATE_OFF = "Off: you are only told when a new version is out. Nothing is installed until you press Update now.";
+export const AUTO_UPDATE_SAFETY =
+  "Agents that are already running keep the version they started with until they are restarted. After every update the status page shows the command that goes back to the version before.";
