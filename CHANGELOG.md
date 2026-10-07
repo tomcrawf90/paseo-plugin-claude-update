@@ -2,6 +2,14 @@
 
 All notable changes to this plugin are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## 0.2.0 - unreleased
+
+- No sidebar row while Claude Code is up to date. The row appears for an update that is waiting, a failure, a mismatch, or an update that running processes have not picked up yet, and goes when the notice is dismissed or resolved. The status page is opened from the Command Center ("Claude Code updates: open status").
+- "Check now" and "Update now" show a spinner and what they are doing; the status page says how long the run has been going, also for a scheduled run or one started elsewhere, and shows the result when it ends. A look that finds nothing new no longer raises a toast.
+- "When an update is found" is now a switch, "Auto-update Claude Code", on the settings screen and at the top of the status page. The stored setting is unchanged (`mode`: `notify` is off, `auto` is on), so an existing choice carries over.
+- A check that finds the install where it should be clears an earlier "update available" or mismatch notice, for instance after an update run in a terminal.
+- The status RPC reports the running check (`activity`: phase, trigger, start time).
+
 ## 0.1.0 - unreleased
 
 First version.

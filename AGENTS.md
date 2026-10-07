@@ -20,7 +20,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `server/processes.ts` | Lists running Claude processes and their versions (`ps` + `lsof`, macOS). Read only. |
 | `server/store.ts`, `paths.ts`, `run.ts`, `notify.ts` | State and log files; data directory and finding `claude`; running a program without a shell; macOS notification. |
 | `shared/` | Settings schema, RPC contracts, version and display helpers. No Node or React imports. |
-| `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. `client/sidebar.ts` holds the row's swap logic apart from React Native so it can be tested. |
+| `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. Three modules hold logic apart from React Native so it can be tested: `client/sidebar.ts` (adding, changing and removing the row, one change at a time), `client/activity.ts` (what the buttons and the progress line say) and `client/bus.ts` (passes each status read to the sidebar row). `test/client-entry.test.ts` runs the entry against a pretend app. |
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
 | `test/cafe-scan.mjs` | Local copy of the Paseo Cafe scanner's rules. |
 | `docs/listing-preview.html`, `SUBMISSION.md` | Listing preview and the publish and submission checklist. |
@@ -98,7 +98,10 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 - The install changes only through `claude update` and `claude install <version>`. Never download a release, write under `~/.local/share/claude`, relink `~/.local/bin/claude`, or read-modify-write `~/.claude.json` or `~/.claude/settings.json` (the latter is read, never written). That rule is about this plugin's code. The CLI's own installer does write there: `claude install <version>` (pin and rollback) rewrites `installMethod`, `autoUpdates` and `autoUpdatesProtectedForNative` in `~/.claude.json`, so never describe the plugin as leaving that file untouched.
 - Never restart, stop or message an agent. The plugin lists old processes and stops there.
 - Start processes with `execFile` only. The Paseo Cafe scanner fails any source file, comments and tests included, that contains the text of a synchronous process call, a shell `-c`, or a command-line download tool; `npm run lint:cafe` checks this.
-- A fresh install is in "Only tell me" mode. Only two things install: the schedule in "Install updates" mode, and "Update now" (`apply: true`). "Check now" (`apply: false`) must stay look-only in every mode.
+- A fresh install has "Auto-update Claude Code" off. Only two things install: the schedule with that switch on, and "Update now" (`apply: true`). "Check now" (`apply: false`) must stay look-only either way.
+- The switch is stored as `mode` (`notify` off, `auto` on) under settings version 1, as 0.1.0 stored its two-way choice. Do not rename the key or raise the version for it: an installed plugin's settings file must keep reading as the choice it held, without being rewritten.
+- No sidebar row while there is nothing to act on. `sidebarRow` in `shared/format.ts` is the one rule for when there is a row and what it says; old processes alone do not bring it back after a notice was dismissed. Nothing may say "up to date" outside the status page.
+- The buttons follow the host: `activity` in the status says what is running, since when and whether it has reached the installer, and is set the moment a check is asked for. The page asks every 2 seconds while it is set.
 - A check makes one attempt and never retries inside itself. The state is written first; anything after a successful update (the history line, the log line, counting old processes, notifying) must not be able to lose the record of it.
 - UI: React Native primitives, colours from `theme.colors`, padding from `layout.compact`.
 - Every behaviour change comes with a test. A new CLI output or failure mode goes into `test/stub/claude` too.
@@ -122,7 +125,9 @@ plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it 
 | --- | --- |
 | `claude update` with no terminal, from a plugin subprocess | Verified 2026-10-07 on macOS with CLI 2.1.285 → 2.1.292 in a throwaway daemon and home. |
 | `claude install <version>` with no terminal | Verified the same way (used for a pin and as the rollback). |
-| Status page, settings screen, sidebar row, toasts in the app | Not seen in the app. Typechecked only. Changing the sidebar row by removing and re-adding it is an assumption about `addSidebarItem` in 0.10; Paseo 0.11 documents runtime add and remove for its newer `addSidebarHeaderItem`/`addSidebarFooterItem` and calls `addSidebarItem` deprecated. |
+| Status page, settings screen, sidebar row in the app | 0.1.0 was used in the app by its owner on 2026-10-07 (an update through "Update now" worked). The 0.2.0 screens have not been seen in the app: they were drawn outside it with react-native-web from the bundle a 0.10.3 daemon built, and the entry was run against a pretend app. |
+| Adding and removing the sidebar row at runtime | Read from the Paseo 0.10.3 app bundle, not from documentation: the function `addSidebarItem` returns takes the item out of the list, frees its id and tells the app to redraw, at any time; a plugin may register no row at start. Paseo 0.11 documents runtime add and remove for its newer `addSidebarHeaderItem`/`addSidebarFooterItem` and calls `addSidebarItem` deprecated, so move to those when 0.10 support is dropped. |
+| `useSettings` on the status page | The switch at the top of the status page saves through `useSettings`, which the app builds on the same RPC and query hooks the page already used. Not seen working in the app. |
 | Cost of the status call | `status.get` runs `ps`, `lsof` and an agent list each time, and is polled every 60 s by each connected app and every 30 s by an open status page. Fine on one machine; a lighter notice-only call is the obvious next step if it ever matters. |
 | macOS notification raised from the daemon | Not confirmed. One may have been raised during the throwaway-daemon run; errors from it are swallowed by design and nobody was watching the screen. |
 | Listing old processes | Verified through a live 0.10.3 daemon on 2026-10-07 (`status.get`): supported, and it reported the one process on an old version (a leftover 2.1.269) while the ten on the installed version were not listed. A home directory with a space in it is covered by tests only. |
@@ -141,7 +146,7 @@ plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it 
 | Release pointer URL | `RELEASES_URL` in `server/claude.ts` (`https://downloads.claude.ai/claude-code-releases/<channel>`, a bare version). If it moves, checks fail with a clear message and nothing is installed. |
 | Channels | `CHANNELS` in `shared/settings.ts`. The CLI also accepts an undocumented `rc`; it is left out on purpose. `claude update` follows `autoUpdatesChannel` in `~/.claude/settings.json`, which the plugin reads to detect a mismatch. Managed and project settings can set it too and are not read (`readClaudeChannel` in `server/claude.ts`). |
 | A check-only or dry-run flag on `claude update` | None exists (2.1.292). If one appears, use it in place of the release pointer. |
-| Headless sessions start updating themselves | The plugin becomes a status display; "Only tell me" is already the default. |
+| Headless sessions start updating themselves | The plugin becomes a status display; auto-update off is already the default. |
 | Install location | `findClaude` in `server/paths.ts` and the `/claude/versions/<version>` pattern in `server/processes.ts`. |
 | New settings that block updates (`DISABLE_UPDATES`, `minimumVersion`, managed ranges) | They apply inside the CLI. The plugin reports "exited 0 but the version is still …" with the CLI's own words. |
 

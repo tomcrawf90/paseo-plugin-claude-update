@@ -17,14 +17,14 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | 3 | GitHub repository | `tomcrawf90/paseo-plugin-claude-update`, public | Paseo Cafe needs a public GitHub repository. `package.json` (`homepage`, `repository`, `bugs`) already points at this name; edit it if you choose another. |
 | 4 | Licence and author | MIT, "Tom Crawford" | In `LICENSE` and `package.json`. 216 of 231 listed plugins are MIT. |
 | 5 | Supported Paseo versions | `>=0.10.3 <0.12.0 \|\| >=0.11.0-beta.1 <0.12.0` | Typechecked and run against 0.10.3 only. The second half lets 0.11 betas load it, which a plain `>=0.10.3` does not (a prerelease only matches a range that names one). Untested on 0.11; 0.12 needs a new release. Lowering the minimum needs a test on the older version. |
-| 6 | First-run behaviour | "Only tell me": a fresh install reports an available update and changes nothing until the user picks "Install updates" | Installing a plugin should not change the host's CLI unasked. The alternative is to default to installing (`mode` in `shared/settings.ts`). |
+| 6 | First-run behaviour | Auto-update off: a fresh install reports an available update and changes nothing until the user turns on "Auto-update Claude Code" | Installing a plugin should not change the host's CLI unasked. The alternative is to default to installing (`mode` in `shared/settings.ts`). |
 
 ## 2. Before publishing
 
 | Step | Command or action | Done |
 | --- | --- | --- |
 | Install it in your own Paseo and use it | `paseo plugin install /Users/tom/Documents/GitHub/paseo-plugin-claude-update`, then `paseo plugin ls` | no |
-| Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page, settings screen, sidebar row, "Check now" toast | no |
+| Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the auto-update switch, the spinner on "Check now" and "Update now", the result line), settings screen, the sidebar row appearing with news and going when it is dismissed | no |
 | Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have not been seen in the app. | no |
 | Set the release date | Replace `unreleased` in `CHANGELOG.md` | no |
 | Verify | `npm run verify` and `npm pack --dry-run` | passes on 2026-10-07 |
@@ -41,12 +41,12 @@ npm pack --dry-run          # check the file list below
 npm publish --access public
 
 # 3. Check the published package installs
-paseo plugin install npm:paseo-plugin-claude-update@0.1.0
+paseo plugin install npm:paseo-plugin-claude-update@0.2.0
 ```
 
-`npm pack --dry-run` on 2026-10-07 (22 files, 24.9 kB packed, 80.9 kB unpacked): `CHANGELOG.md`,
+`npm pack --dry-run` on 2026-10-07 (24 files, 30.0 kB packed, 99.2 kB unpacked): `CHANGELOG.md`,
 `LICENSE`, `README.md`, `package.json`, `paseo-plugin.json`, `index.client.tsx`, `index.server.ts`,
-`client/{settings,status}.tsx`, `server/{claude,notify,paths,processes,run,service,store,updater}.ts`,
+`client/{settings,status}.tsx`, `client/{activity,bus,sidebar}.ts`, `server/{claude,notify,paths,processes,run,service,store,updater}.ts`,
 `shared/{format,settings,status,version}.ts`. Tests, the stub, CI and these notes are not published.
 
 ## 4. Submit to Paseo Cafe
@@ -70,7 +70,7 @@ Submission is a form at <https://paseo.cafe/submit>. It opens a prefilled GitHub
 Caveats to paste (each is under 140 characters):
 
 ```text
-Only reports updates until you choose "Install updates" in its settings; then it runs claude update on a schedule.
+Only reports updates until you turn on "Auto-update Claude Code"; then it runs claude update on a schedule.
 Supports Claude Code's native installer only, not Homebrew, WinGet or npm installs.
 Tested on macOS only; listing old processes and desktop notifications are macOS only.
 Running agents keep their old Claude Code version until you restart them; nothing is restarted for you.
@@ -84,7 +84,7 @@ Reads process environments on the host to match processes to agents; only the Pa
 | --- | --- | --- |
 | Name | The registry id | `claude-update` |
 | Description, author, licence | `package.json`, `paseo-plugin.json`, `README.md` | Filled in |
-| Version | The published npm version, which must match `package.json` in the repository | `0.1.0` |
+| Version | The published npm version, which must match `package.json` in the repository | `0.2.0` |
 | Install notes | The `## Install` section of `README.md`, quoted as written | Written |
 | Limitations | The `## Limitations` section of `README.md`, plus the caveats above | Written |
 | Screenshots | Every image in `images/` | **Missing**: see step 2 |

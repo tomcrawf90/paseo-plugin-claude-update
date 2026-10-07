@@ -1,6 +1,6 @@
 {
   "name": "paseo-plugin-claude-update",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Paseo plugin: keeps the Claude Code CLI up to date on the daemon host, where its own updater never runs",
   "license": "MIT",
   "author": "Tom Crawford",
