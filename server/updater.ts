@@ -84,7 +84,8 @@ export interface CheckOptions {
  *
  * Only two commands ever change the install, both the CLI's own:
  * `claude update`, and `claude install <version>` for a pin. Nothing here
- * writes to the install directory, the launcher or `~/.claude.json`.
+ * writes to the install directory, the launcher or `~/.claude.json`; the CLI
+ * does, and `claude install` rewrites its install keys in `~/.claude.json`.
  */
 export async function runCheck(
   deps: UpdaterDependencies,

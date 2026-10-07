@@ -76,7 +76,7 @@ there yourself and choose `stable` here. The plugin never edits Claude Code's fi
 
 | Concern | What the plugin does |
 | --- | --- |
-| Changing the install | Only through the CLI's own commands: `claude update`, and `claude install <version>` for a pin. It never downloads a binary and never writes to the install directory, the launcher or `~/.claude.json`. Release verification stays with the CLI. |
+| Changing the install | Only through the CLI's own commands: `claude update`, and `claude install <version>` for a pin. The plugin's own code never downloads a binary and never writes to the install directory, the launcher or `~/.claude.json`; the CLI does all of that. Note that `claude install <version>` (a pin, or the rollback) is the CLI's installer, and it rewrites `installMethod`, `autoUpdates` and `autoUpdatesProtectedForNative` in `~/.claude.json`. Release verification stays with the CLI. |
 | Running sessions | Not touched. Claude Code keeps each version in its own file and keeps the versions that are in use, so an update does not pull the binary from under a live session. |
 | Restarts | None. It lists old processes and leaves restarting to you. |
 | A bad release | Roll back (below), or use "Only tell me", the `stable` channel, or a pin. |
