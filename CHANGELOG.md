@@ -5,9 +5,11 @@ A version marked "not published" was finished but never reached npm; its changes
 
 ## 0.2.1 - unreleased
 
-- No sidebar row after an update, and none for processes still on an older version: those are listed on the status page only. An update that went in is on the status page and in the history, with a macOS notification if those are on; it no longer raises a toast.
-- The row is there only for something to act on, and its title fits on one line (20 characters at most): "Claude update ready", "Claude update failed", "Claude pin mismatch", "Claude channel issue".
-- No row for an update that the next scheduled check installs by itself (auto-update on, schedule on), such as one found by "Check now".
+- The sidebar row is always there, reading "Claude Code updates", and opens the status page. 0.2.0 took the row away while there was nothing to act on, which left the page, its "Check now" button and the time of the last check reachable only from the Command Center.
+- The status page begins with a "Checks" card: when the last check was (how long ago and the clock time), how it ended, the last time the version changed and from what to what, when the next scheduled check is, and the "Check now" and "Update now" buttons.
+- The settings screen (Settings → Plugins → Claude Code updates) has the same lines and a "Check now" action.
+- The row's title changes only for something to act on, and fits on one line (20 characters at most): "Claude update ready", "Claude update failed", "Claude pin mismatch", "Claude channel issue". After an update, and for processes still on an older version, it keeps its plain title: those are on the status page only. An update that went in is on the status page and in the history, with a macOS notification if those are on; it no longer raises a toast.
+- The plain title also stays for an update that the next scheduled check installs by itself (auto-update on, schedule on), such as one found by "Check now".
 - An update that was tried and did not go in is told at once, in the row, on the status page and by macOS notification. Before, it waited for the third failure in a row, as a failed check still does. The notice stays through a "Check now" that works, until it is dismissed or the update goes in.
 - A notice of a waiting update that was replaced by a failure notice comes back when checks work again.
 - The status RPC reports `autoInstall`: whether the schedule installs what it finds.
