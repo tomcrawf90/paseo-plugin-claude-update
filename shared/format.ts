@@ -65,11 +65,13 @@ export function lastCheckText(status: Pick<Status, "lastCheckAt">, now: number, 
 
 /**
  * When the schedule checks next. `off` while scheduled checks are switched
- * off, `shortly` before the first one, and `due now` once the time has come:
- * the schedule looks once a minute, so a time just past is not a fault.
+ * off or the settings cannot be read, `shortly` before the first one, and
+ * `due now` once the time has come: the schedule looks once a minute, so a
+ * time just past is not a fault.
  */
-export function nextCheckText(status: Pick<Status, "lastCheckAt" | "nextCheckAt">, now: number, offsetMinutes?: number): string {
-  if (status.nextCheckAt === null) return status.lastCheckAt === null ? "shortly" : "off";
+export function nextCheckText(status: Pick<Status, "scheduled" | "nextCheckAt">, now: number, offsetMinutes?: number): string {
+  if (!status.scheduled) return "off";
+  if (status.nextCheckAt === null) return "shortly";
   const next = Date.parse(status.nextCheckAt);
   if (Number.isNaN(next)) return "unknown";
   return next <= now ? "due now" : bothTimes(status.nextCheckAt, now, offsetMinutes);
@@ -86,13 +88,22 @@ export function lastResult(status: Pick<Status, "lastOutcome" | "lastMessage" | 
 }
 
 /**
- * The last time the version changed, newest first in `history`: `2.1.293 →
- * 2.1.294, 2 h ago · today at 07:09`. Checks since then that found nothing
- * new do not hide it. Null when the history shown holds no update.
+ * The last time the version changed: `2.1.293 → 2.1.294, 2 h ago · today at
+ * 07:09`. Checks since then that found nothing new do not hide it. `history`
+ * is newest first and holds only the last few entries, so when the update has
+ * gone from it the versions are given without the time. Null when no update
+ * is known at all.
  */
-export function lastUpdateText(history: readonly HistoryEntry[], now: number, offsetMinutes?: number): string | null {
-  const entry = history.find((each) => each.outcome === "updated" || each.outcome === "pin-applied");
-  if (entry === undefined) return null;
+export function lastUpdateText(
+  status: { history: readonly HistoryEntry[] } & Pick<Status, "previousVersion" | "installedVersion">,
+  now: number,
+  offsetMinutes?: number,
+): string | null {
+  const entry = status.history.find((each) => each.outcome === "updated" || each.outcome === "pin-applied");
+  if (entry === undefined) {
+    if (status.previousVersion === null || status.installedVersion === null) return null;
+    return `${status.previousVersion} → ${status.installedVersion}, before the history below`;
+  }
   const versions = entry.from !== null && entry.to !== null ? `${entry.from} → ${entry.to}, ` : entry.to !== null ? `to ${entry.to}, ` : "";
   return `${versions}${bothTimes(entry.at, now, offsetMinutes)}`;
 }

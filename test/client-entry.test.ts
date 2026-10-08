@@ -21,6 +21,7 @@ const QUIET: Status = {
   claudeChannel: "latest",
   lastCheckAt: "2026-10-07T10:00:00.000Z",
   nextCheckAt: "2026-10-07T14:00:00.000Z",
+  scheduled: true,
   lastOutcome: "up-to-date",
   lastMessage: "Claude Code 2.1.292 is up to date (latest is 2.1.292).",
   consecutiveFailures: 0,

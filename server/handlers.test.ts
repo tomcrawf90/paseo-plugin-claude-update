@@ -48,7 +48,7 @@ describe("the calls the app makes", () => {
   it("status.get says nothing has been checked before the first check, and runs nothing", async () => {
     const h = harness("2.1.292", "2.1.292");
     const status = await rpcs(h).call("status.get");
-    expect(status).toMatchObject({ lastCheckAt: null, nextCheckAt: null, lastOutcome: null, lastMessage: null, checking: false });
+    expect(status).toMatchObject({ lastCheckAt: null, nextCheckAt: null, scheduled: true, lastOutcome: null, lastMessage: null, checking: false });
     expect(h.claude.calls).toEqual([]);
   });
 
@@ -97,6 +97,14 @@ describe("the calls the app makes", () => {
     const status = await rpcs(h).call("status.check");
     expect(status).toMatchObject({ lastCheckAt: new Date(h.clock.now).toISOString(), lastOutcome: "failed", consecutiveFailures: 1 });
     expect(status.lastMessage).toContain("HTTP 503");
+  });
+
+  it("status.get says the schedule is off, before the first check as well, so the screens do not promise one", async () => {
+    const off = await rpcs(harness("2.1.292", "2.1.292"), settingsWith({ enabled: false })).call("status.get");
+    expect(off).toMatchObject({ scheduled: false, nextCheckAt: null, lastCheckAt: null });
+    service?.stop();
+    const unreadable = await rpcs(harness("2.1.292", "2.1.292"), null).call("status.get");
+    expect(unreadable).toMatchObject({ scheduled: false, nextCheckAt: null });
   });
 
   it("status.check with settings that cannot be read is refused, and nothing is left running", async () => {

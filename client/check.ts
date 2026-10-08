@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { checkNow, getStatus, type Status } from "../shared/status";
-import { activityView, resultOf, runEnded, type Action, type ActivityView, type RunResult } from "./activity";
+import { activityView, checkInput, resultOf, runEnded, type Action, type ActivityView, type RunResult } from "./activity";
 import { publishStatus } from "./bus";
 
 export const STATUS_QUERY_KEY = ["claude-update", "status"] as const;
@@ -31,8 +31,9 @@ export interface Check {
 
 /**
  * The status, kept fresh, and the two buttons. The status page and the
- * settings screen both use it; Paseo gives them one query client, so a check
- * started on one shows on the other.
+ * settings screen both use it; Paseo gives them one query client, so they
+ * read one cached status. The spinner and the pressed button belong to the
+ * screen that was pressed; the other shows the result at its next read.
  */
 export function useCheck(): Check {
   const toast = useToast();
@@ -48,7 +49,7 @@ export function useCheck(): Check {
   const [pressedAt, setPressedAt] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
   const check = useMutation({
-    mutationFn: (action: Action) => runCheck({ apply: action === "update" }),
+    mutationFn: (action: Action) => runCheck(checkInput(action)),
     async onMutate() {
       setPressedAt(Date.now());
       setResult(null);

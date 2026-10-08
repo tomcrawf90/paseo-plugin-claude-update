@@ -68,14 +68,17 @@ describe("the check lines", () => {
   });
 
   it("say when the schedule checks next, or why it will not", () => {
-    expect(nextCheckText({ lastCheckAt: at(-600), nextCheckAt: at(50 * 60) }, now, 60)).toBe("in 50 min · today at 11:50");
-    expect(nextCheckText({ lastCheckAt: at(-600), nextCheckAt: at(20 * 3600) }, now, 60)).toBe("in 20 h · tomorrow at 07:00");
-    expect(nextCheckText({ lastCheckAt: null, nextCheckAt: null }, now, 60)).toBe("shortly");
-    expect(nextCheckText({ lastCheckAt: at(-600), nextCheckAt: null }, now, 60)).toBe("off");
+    expect(nextCheckText({ scheduled: true, nextCheckAt: at(50 * 60) }, now, 60)).toBe("in 50 min · today at 11:50");
+    expect(nextCheckText({ scheduled: true, nextCheckAt: at(20 * 3600) }, now, 60)).toBe("in 20 h · tomorrow at 07:00");
+    // Before the first check there is no time yet; the first one is about 30 seconds after the plugin starts.
+    expect(nextCheckText({ scheduled: true, nextCheckAt: null }, now, 60)).toBe("shortly");
+    // Switched off, before the first check or after it: never "shortly".
+    expect(nextCheckText({ scheduled: false, nextCheckAt: null }, now, 60)).toBe("off");
+    expect(nextCheckText({ scheduled: false, nextCheckAt: at(50 * 60) }, now, 60)).toBe("off");
     // The time has come and the next tick takes it: not "2 min ago".
-    expect(nextCheckText({ lastCheckAt: at(-3720), nextCheckAt: at(-120) }, now, 60)).toBe("due now");
-    expect(nextCheckText({ lastCheckAt: at(-3600), nextCheckAt: at(0) }, now, 60)).toBe("due now");
-    expect(nextCheckText({ lastCheckAt: at(-600), nextCheckAt: "nonsense" }, now, 60)).toBe("unknown");
+    expect(nextCheckText({ scheduled: true, nextCheckAt: at(-120) }, now, 60)).toBe("due now");
+    expect(nextCheckText({ scheduled: true, nextCheckAt: at(0) }, now, 60)).toBe("due now");
+    expect(nextCheckText({ scheduled: true, nextCheckAt: "nonsense" }, now, 60)).toBe("unknown");
   });
 
   it("say how the last check ended, with its own sentence", () => {
@@ -108,17 +111,22 @@ describe("the check lines", () => {
       target: to,
       message: "",
     });
-    expect(lastUpdateText([], now, 60)).toBeNull();
-    expect(lastUpdateText([entry("update-available", -60, "2.1.293", null), entry("failed", -120, "2.1.293", null)], now, 60)).toBeNull();
+    const last = (history: HistoryEntry[], previousVersion: string | null = null, installedVersion: string | null = "2.1.294") =>
+      lastUpdateText({ history, previousVersion, installedVersion }, now, 60);
+    expect(last([])).toBeNull();
+    expect(last([entry("update-available", -60, "2.1.293", null), entry("failed", -120, "2.1.293", null)])).toBeNull();
+    // The update has gone from the entries shown, but the state still knows the version before.
+    expect(last([entry("failed", -120, "2.1.294", null)], "2.1.293")).toBe("2.1.293 → 2.1.294, before the history below");
+    expect(last([], "2.1.293", null)).toBeNull();
     // Newest first, as the status gives it.
     const history = [
       entry("failed", -600, "2.1.294", null),
       entry("updated", -2 * 3600, "2.1.293", "2.1.294"),
       entry("updated", -15 * 3600, "2.1.292", "2.1.293"),
     ];
-    expect(lastUpdateText(history, now, 60)).toBe("2.1.293 → 2.1.294, 2 h ago · today at 09:00");
-    expect(lastUpdateText([entry("pin-applied", -26 * 3600, "2.1.294", "2.1.285")], now, 60)).toBe("2.1.294 → 2.1.285, 1 d ago · yesterday at 09:00");
-    expect(lastUpdateText([entry("updated", -3600, null, "2.1.294")], now, 60)).toBe("to 2.1.294, 1 h ago · today at 10:00");
+    expect(last(history, "2.1.293")).toBe("2.1.293 → 2.1.294, 2 h ago · today at 09:00");
+    expect(last([entry("pin-applied", -26 * 3600, "2.1.294", "2.1.285")])).toBe("2.1.294 → 2.1.285, 1 d ago · yesterday at 09:00");
+    expect(last([entry("updated", -3600, null, "2.1.294")])).toBe("to 2.1.294, 1 h ago · today at 10:00");
   });
 });
 

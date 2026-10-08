@@ -147,7 +147,7 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 - An update that is running when the plugin is reloaded or the daemon stops may be cut short; the next check tries again.
 
 Not verified at the time of writing (0.2.1): how the status page, settings screen and sidebar row
-look in the Paseo app as they are now (they were drawn outside it, from the bundle a Paseo daemon builds), and
+look in the Paseo desktop window or on a phone (they were seen in the app's own web bundle in a browser, against a throwaway daemon), and
 whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in a real Paseo
 0.10.3 daemon against a throwaway copy of the CLI.
 

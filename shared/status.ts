@@ -59,6 +59,8 @@ export const statusSchema = z.object({
   claudeChannel: z.string().nullable(),
   lastCheckAt: z.string().nullable(),
   nextCheckAt: z.string().nullable(),
+  /** Scheduled checks are on: the settings could be read and "Check on a schedule" is on. */
+  scheduled: z.boolean(),
   lastOutcome: z.enum(OUTCOMES).nullable(),
   lastMessage: z.string().nullable(),
   consecutiveFailures: z.number(),

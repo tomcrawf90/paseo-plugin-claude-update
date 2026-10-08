@@ -208,7 +208,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
 
   const data = check.data;
   const last = lastResult(data);
-  const lastUpdate = lastUpdateText(data.history, now);
+  const lastUpdate = lastUpdateText(data, now);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Claude Code updates</Text>
@@ -230,7 +230,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
         </View>
       ) : null}
 
-      {/* First on the page: whether the plugin is working, and the button to find out now. */}
+      {/* First on the page, under a notice if there is one: whether the plugin is working, and the button to find out now. */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Checks</Text>
         <Row styles={styles} label="Last checked">
@@ -253,7 +253,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
           <Text style={styles.muted}>{last.detail}</Text>
         ) : null}
         <Row styles={styles} label="Last update">
-          {lastUpdate ?? "none in the history below"}
+          {lastUpdate ?? "none yet"}
         </Row>
         <Row styles={styles} label="Next scheduled check">
           {nextCheckText(data, now)}

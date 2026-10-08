@@ -67,10 +67,18 @@ export function resultOf(status: Pick<Status, "lastOutcome" | "lastMessage">, at
 }
 
 /**
- * A run this page did not start has just ended: the status said one was
- * running and now says none is. Its result is shown the same as a pressed
- * button's.
+ * A run this screen did not start has ended since the status was last read:
+ * the status said one was running and now says none is, or the time of the
+ * last check has moved with none running (a run that began and ended between
+ * two reads, such as one pressed on the other screen). Its result is shown
+ * the same as a pressed button's.
  */
-export function runEnded(before: Pick<Status, "activity"> | null, after: Pick<Status, "activity">): boolean {
-  return before !== null && before.activity !== null && after.activity === null;
+export function runEnded(before: Pick<Status, "activity" | "lastCheckAt"> | null, after: Pick<Status, "activity" | "lastCheckAt">): boolean {
+  if (before === null || after.activity !== null) return false;
+  return before.activity !== null || before.lastCheckAt !== after.lastCheckAt;
+}
+
+/** What each button asks the host for: only "Update now" may install. */
+export function checkInput(action: Action): { apply: boolean } {
+  return { apply: action === "update" };
 }

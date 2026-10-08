@@ -26,7 +26,7 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | --- | --- | --- |
 | Install it in your own Paseo and use it | `paseo plugin install /absolute/path/to/paseo-plugin-claude-update` (your checkout), then `paseo plugin ls` | no |
 | Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the "Checks" card with the last and next check, the spinner on "Check now" and "Update now", the result line, the auto-update switch), settings screen (its "Checks" section and "Check now"), the sidebar row ("Claude Code updates", on one line) reading "Claude update ready" while an update waits with auto-update off, and going back when it is dismissed or installed or after an update | no |
-| Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have not been seen in the app. | no |
+| Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have been seen in the app's web bundle in a browser (2026-10-08), not in the desktop window or on a phone. | no |
 | Set the release date | `npm run release:prepare -- 0.2.1` on a release branch dates the `CHANGELOG.md` entry (RELEASING.md) | no |
 | Verify | `npm run verify` and `npm pack --dry-run` | passes on 2026-10-07 |
 
