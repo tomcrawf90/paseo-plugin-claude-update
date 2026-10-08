@@ -137,7 +137,8 @@ export function startService(
         ...process,
         title: process.agentId === null ? null : (titles.get(process.agentId) ?? null),
       }));
-      const next = settings !== null && settings.enabled ? nextCheckAt(state, settings) : null;
+      const scheduled = settings !== null && settings.enabled;
+      const next = scheduled ? nextCheckAt(state, settings) : null;
       return {
         claudePath: state.claudePath,
         installedVersion: state.installedVersion,
@@ -145,6 +146,7 @@ export function startService(
         claudeChannel: state.claudeChannel,
         lastCheckAt: state.lastCheckAt,
         nextCheckAt: next === null ? null : new Date(next).toISOString(),
+        scheduled,
         lastOutcome: state.lastOutcome,
         lastMessage: state.lastMessage,
         consecutiveFailures: state.consecutiveFailures,

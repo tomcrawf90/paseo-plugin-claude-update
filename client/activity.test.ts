@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { activityView, resultOf, runEnded, type Pending } from "./activity";
+import { checkInput, activityView, resultOf, runEnded, type Pending } from "./activity";
 
 const now = Date.parse("2026-10-07T10:00:12Z");
 const startedAt = "2026-10-07T10:00:00.000Z";
@@ -87,9 +87,24 @@ describe("the result of a run", () => {
   });
 
   it("is shown when a run seen running is seen to have ended, and only then", () => {
-    expect(runEnded(running("installing", "schedule"), idle)).toBe(true);
-    expect(runEnded(idle, idle)).toBe(false);
-    expect(runEnded(null, idle)).toBe(false);
-    expect(runEnded(running("checking", "schedule"), running("installing", "schedule"))).toBe(false);
+    const at = (lastCheckAt: string | null) => ({ lastCheckAt });
+    const was = { ...at("2026-10-07T09:00:00.000Z") };
+    expect(runEnded({ ...running("installing", "schedule"), ...was }, { ...idle, ...was })).toBe(true);
+    expect(runEnded({ ...idle, ...was }, { ...idle, ...was })).toBe(false);
+    expect(runEnded(null, { ...idle, ...was })).toBe(false);
+    expect(runEnded({ ...running("checking", "schedule"), ...was }, { ...running("installing", "schedule"), ...was })).toBe(false);
+  });
+
+  it("is shown for a run that began and ended between two reads, such as one pressed on the other screen", () => {
+    const before = { ...idle, lastCheckAt: "2026-10-07T09:00:00.000Z" };
+    expect(runEnded(before, { ...idle, lastCheckAt: "2026-10-07T10:00:00.000Z" })).toBe(true);
+    expect(runEnded({ ...idle, lastCheckAt: null }, { ...idle, lastCheckAt: "2026-10-07T10:00:00.000Z" })).toBe(true);
+    // Another run has already begun: its end is what is shown.
+    expect(runEnded(before, { ...running("checking", "manual"), lastCheckAt: "2026-10-07T10:00:00.000Z" })).toBe(false);
+  });
+
+  it("only Update now asks the host to install", () => {
+    expect(checkInput("check")).toEqual({ apply: false });
+    expect(checkInput("update")).toEqual({ apply: true });
   });
 });

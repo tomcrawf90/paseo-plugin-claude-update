@@ -25,8 +25,8 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | Step | Command or action | Done |
 | --- | --- | --- |
 | Install it in your own Paseo and use it | `paseo plugin install /absolute/path/to/paseo-plugin-claude-update` (your checkout), then `paseo plugin ls` | no |
-| Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the auto-update switch, the spinner on "Check now" and "Update now", the result line), settings screen, the sidebar row ("Claude update ready", on one line) appearing while an update waits with auto-update off and going when it is dismissed or installed, and no row after an update | no |
-| Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have not been seen in the app. | no |
+| Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the "Checks" card with the last and next check, the spinner on "Check now" and "Update now", the result line, the auto-update switch), settings screen (its "Checks" section and "Check now"), the sidebar row ("Claude Code updates", on one line) reading "Claude update ready" while an update waits with auto-update off, and going back when it is dismissed or installed or after an update | no |
+| Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have been seen in the app's web bundle in a browser (2026-10-08), not in the desktop window or on a phone. | no |
 | Set the release date | `npm run release:prepare -- 0.2.1` on a release branch dates the `CHANGELOG.md` entry (RELEASING.md) | no |
 | Verify | `npm run verify` and `npm pack --dry-run` | passes on 2026-10-07 |
 
@@ -44,9 +44,9 @@ steps are in [RELEASING.md](RELEASING.md).
 | 4 | The Release workflow ended green: the package is on npm and the GitHub release exists | no |
 | 5 | The published package installs: `paseo plugin install npm:paseo-plugin-claude-update@0.2.1` | no |
 
-`npm pack --dry-run` on 2026-10-07 (24 files, about 32 kB packed): `CHANGELOG.md`,
+`npm pack --dry-run` on 2026-10-08 (26 files, about 35 kB packed): `CHANGELOG.md`,
 `LICENSE`, `README.md`, `package.json`, `paseo-plugin.json`, `index.client.tsx`, `index.server.ts`,
-`client/{settings,status}.tsx`, `client/{activity,bus,sidebar}.ts`, `server/{claude,notify,paths,processes,run,service,store,updater}.ts`,
+`client/{settings,status}.tsx`, `client/{activity,bus,check,sidebar}.ts`, `server/{claude,handlers,notify,paths,processes,run,service,store,updater}.ts`,
 `shared/{format,settings,status,version}.ts`. Tests, the stub, the release script, CI and these notes are not published.
 
 ## 4. Submit to Paseo Cafe

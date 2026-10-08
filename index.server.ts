@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 
+import { handleRpcs } from "./server/handlers";
 import { createNotifier } from "./server/notify";
 import { dataDirectory } from "./server/paths";
 import { listClaudeProcesses, staleProcesses } from "./server/processes";
@@ -12,7 +13,6 @@ import { startService } from "./server/service";
 import { createFileStore } from "./server/store";
 import type { UpdaterDependencies } from "./server/updater";
 import { updateSettings } from "./shared/settings";
-import { checkNow, dismissAttention, getStatus } from "./shared/status";
 
 const FETCH_TIMEOUT_MS = 20_000;
 
@@ -71,15 +71,7 @@ export default function contribute(server: PluginServerContext) {
     return null;
   });
 
-  server.handle(getStatus, (_input, { paseo }) => service.status(paseo));
-  server.handle(checkNow, async ({ apply }, { paseo }) => {
-    await service.check("manual", apply);
-    return service.status(paseo);
-  });
-  server.handle(dismissAttention, async (_input, { paseo }) => {
-    await service.dismiss();
-    return service.status(paseo);
-  });
+  handleRpcs(server, service);
 
   console.log(`[claude-update] started; state and logs are in ${deps.store.directory}`);
   return () => service.stop();

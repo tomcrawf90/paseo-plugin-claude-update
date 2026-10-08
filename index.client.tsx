@@ -4,7 +4,7 @@ import { onStatus, publishStatus } from "./client/bus";
 import { UpdateSettingsScreen } from "./client/settings";
 import { createSidebarRow } from "./client/sidebar";
 import { StatusSurface } from "./client/status";
-import { sidebarRow } from "./shared/format";
+import { QUIET_ROW, sidebarRow } from "./shared/format";
 import { checkNow, getStatus } from "./shared/status";
 
 const SURFACE_ID = "status";
@@ -19,13 +19,15 @@ export default function contribute(client: PluginClientContext) {
     Component: UpdateSettingsScreen,
   });
 
-  // No sidebar row while there is nothing to act on: it is added when a
-  // status has news and taken away when the news is dismissed or resolved.
-  // The status page stays reachable from the Command Center items below.
+  // The sidebar row is always there, as the way in to the status page: it
+  // is added before the first status read, so it is there with the host away
+  // too. It reads as the news while a status has some, and goes back to its
+  // plain title when the news is dismissed or resolved.
   let disposed = false;
   const row = createSidebarRow(({ title, icon }) => client.addSidebarItem({ id: "status", title, icon, surface: SURFACE_ID }));
+  row.show(QUIET_ROW);
   const unsubscribe = onStatus((status) => {
-    if (!disposed) row.show(sidebarRow(status));
+    if (!disposed) row.show(sidebarRow(status) ?? QUIET_ROW);
   });
 
   async function refresh(): Promise<void> {

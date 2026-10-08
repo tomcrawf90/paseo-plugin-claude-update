@@ -18,8 +18,8 @@ export interface SidebarRowController {
 const key = (row: SidebarRow | null): string | null => (row === null ? null : `${row.title}|${row.icon}`);
 
 /**
- * Keeps at most one sidebar row. There is none to begin with: the row is
- * added when there is something to say and taken away when there is not. Its
+ * Keeps at most one sidebar row. There is none until the first `show`; the
+ * entry asks for one at once and keeps it, and `show(null)` takes it away. Its
  * title and icon change by taking the row away and adding it again under the
  * same id. Changes run one at a time, each waiting for the old row to be
  * gone, so two changes close together can never leave two rows. If the old
