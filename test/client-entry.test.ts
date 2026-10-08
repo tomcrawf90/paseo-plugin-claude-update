@@ -125,14 +125,18 @@ afterEach(async () => {
   cleanup = null;
 });
 
+const QUIET_ROW = { id: "status", title: "Claude Code updates", icon: "RefreshCw", surface: "status" };
+const titles = (fake: ReturnType<typeof app>) => fake.rows.map((row) => row.title);
+
 describe("the plugin in the app", () => {
-  it("adds no sidebar row while there is nothing new, and stays reachable", async () => {
+  it("has its sidebar row from the start, before the status is read, and is reachable three ways", async () => {
     const fake = app({ status: QUIET });
     load(fake);
-    expect(fake.rows).toEqual([]);
+    await Promise.resolve();
+    expect(fake.rows).toEqual([QUIET_ROW]);
     await settle();
     expect(fake.calls).toEqual([{ name: getStatus.name, input: {} }]);
-    expect(fake.rows).toEqual([]);
+    expect(fake.rows).toEqual([QUIET_ROW]);
     expect(fake.surfaces).toEqual(["status"]);
     expect(fake.settingsScreens).toEqual(["settings"]);
     expect(fake.commands.map((command) => command.id)).toEqual(["open-status", "check-now", "open-settings"]);
@@ -141,70 +145,81 @@ describe("the plugin in the app", () => {
     expect(fake.opened).toEqual(["surface:status", "settings:settings"]);
   });
 
-  it("adds the row when there is news", async () => {
+  it("keeps the row while the status cannot be read", async () => {
+    const fake = app({ status: QUIET });
+    fake.rpc = async () => {
+      throw new Error("the host is away");
+    };
+    load(fake);
+    await settle();
+    expect(fake.rows).toEqual([QUIET_ROW]);
+  });
+
+  it("names the news on the row when there is some", async () => {
     const fake = app({ status: AVAILABLE });
     load(fake);
     await settle();
     expect(fake.rows).toEqual([{ id: "status", title: "Claude update ready", icon: "CircleArrowUp", surface: "status" }]);
   });
 
-  it("adds no row after an update, with processes still on the version before", async () => {
+  it("keeps the plain row after an update, with processes still on the version before", async () => {
     const fake = app({ status: UPDATED });
     load(fake);
     await settle();
-    expect(fake.rows).toEqual([]);
-    expect(fake.mostRows).toBe(0);
-    // Reachable all the same.
-    await fake.select("open-status");
-    expect(fake.opened).toEqual(["surface:status"]);
+    expect(fake.rows).toEqual([QUIET_ROW]);
+    expect(fake.mostRows).toBe(1);
   });
 
-  it("adds no row for an update that the schedule is about to install", async () => {
+  it("keeps the plain row for an update that the schedule is about to install", async () => {
     const fake = app({ status: { ...AVAILABLE, autoInstall: true } });
     load(fake);
     await settle();
-    expect(fake.rows).toEqual([]);
+    expect(fake.rows).toEqual([QUIET_ROW]);
   });
 
-  it("has no row, then one, then none, and never two", async () => {
+  it("has one row throughout, which reads as the news and then plainly again", async () => {
     const fake = app({ status: QUIET });
     load(fake);
     await settle();
-    const seen: string[][] = [fake.rows.map((row) => row.title)];
+    const seen: string[][] = [titles(fake)];
     // An update is out, it fails to install, it installs, and the notice is dismissed.
     for (const next of [AVAILABLE, FAILED, AVAILABLE, UPDATED, QUIET]) {
       fake.answers.check = next;
       await fake.select("check-now");
       await settle();
-      seen.push(fake.rows.map((row) => row.title));
+      seen.push(titles(fake));
     }
-    expect(seen).toEqual([[], ["Claude update ready"], ["Claude update failed"], ["Claude update ready"], [], []]);
+    const plain = [QUIET_ROW.title];
+    expect(seen).toEqual([plain, ["Claude update ready"], ["Claude update failed"], ["Claude update ready"], plain, plain]);
     expect(fake.mostRows).toBe(1);
   });
 
-  it("a check from the Command Center that finds nothing opens the page and leaves the sidebar empty", async () => {
+  it("a check from the Command Center that finds nothing opens the page and leaves the row as it was", async () => {
     const fake = app({ status: QUIET });
     load(fake);
     await settle();
+    const before = fake.rows[0];
     await fake.select("check-now");
     await settle();
     expect(fake.opened).toEqual(["surface:status"]);
     expect(fake.calls.at(-1)).toEqual({ name: checkNow.name, input: { apply: false } });
-    expect(fake.rows).toEqual([]);
+    // The same registration: the row was not taken away and added again.
+    expect(fake.rows).toHaveLength(1);
+    expect(fake.rows[0]).toBe(before);
   });
 
-  it("a check from the Command Center that finds an update adds the row, and a later quiet status takes it away", async () => {
+  it("a check from the Command Center that finds an update names it on the row, and a later quiet status puts the plain title back", async () => {
     const fake = app({ status: QUIET, check: AVAILABLE });
     load(fake);
     await settle();
     await fake.select("check-now");
     await settle();
-    expect(fake.rows.map((row) => row.title)).toEqual(["Claude update ready"]);
+    expect(titles(fake)).toEqual(["Claude update ready"]);
     // Dismissed, or installed: the next status has no notice.
     fake.answers.check = QUIET;
     await fake.select("check-now");
     await settle();
-    expect(fake.rows).toEqual([]);
+    expect(fake.rows).toEqual([QUIET_ROW]);
   });
 
   it("changes nothing after it has been stopped", async () => {
@@ -214,6 +229,6 @@ describe("the plugin in the app", () => {
     await cleanup?.();
     await fake.select("check-now");
     await settle();
-    expect(fake.rows).toEqual([]);
+    expect(fake.rows).toEqual([QUIET_ROW]);
   });
 });

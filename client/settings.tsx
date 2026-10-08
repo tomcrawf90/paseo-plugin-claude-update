@@ -26,12 +26,55 @@ import {
   type Channel,
   type UpdateSettings,
 } from "../shared/settings";
+import { lastCheckText, lastResult, nextCheckText, QUIET_ROW } from "../shared/format";
 import { isExactVersion } from "../shared/version";
+import { useCheck } from "./check";
 
 const CHANNEL_OPTIONS: readonly { label: string; value: Channel }[] = [
   { label: "latest", value: "latest" },
   { label: "stable", value: "stable" },
 ];
+
+/**
+ * Whether the plugin is working, on the screen people open first: when it
+ * last checked, how that ended, when it checks next, and "Check now". The
+ * status page has the same, with the history.
+ */
+function CheckSection() {
+  const check = useCheck();
+  const { data, view, result, now } = check;
+  if (data === undefined) {
+    return (
+      <SettingsSection title="Checks">
+        <SettingsCard>
+          <SettingsRow label="Last checked" hint={check.loading ? "Loading…" : undefined} error={check.error} />
+        </SettingsCard>
+      </SettingsSection>
+    );
+  }
+  const last = lastResult(data);
+  const failed = data.lastOutcome === "failed";
+  return (
+    <SettingsSection title="Checks" info={`The status page has the history and what is still running an older version: “${QUIET_ROW.title}” in the sidebar.`}>
+      <SettingsCard>
+        <SettingsRow label="Last checked" hint={lastCheckText(data, now)} />
+        <SettingsRow
+          label={`Last result: ${last.label}`}
+          hint={failed ? undefined : (last.detail ?? undefined)}
+          error={failed ? last.detail : null}
+        />
+        <SettingsRow label="Next scheduled check" hint={nextCheckText(data, now)} />
+        <SettingsAction
+          label="Check for an update now"
+          hint={view.line ?? (result !== null ? `Finished: ${result.message}` : "It only looks: nothing is installed. Update now is on the status page.")}
+          actionLabel={view.checkLabel}
+          disabled={view.busy}
+          onPress={() => check.run("check")}
+        />
+      </SettingsCard>
+    </SettingsSection>
+  );
+}
 
 export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
   const settings = useSettings(updateSettings);
@@ -83,9 +126,10 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
 
   return (
     <>
+      <CheckSection />
       <SettingsSection
         title="Claude Code updates"
-        info="Claude Code only updates itself from its terminal interface. Paseo runs it without one, so this plugin runs the CLI's own updater on a schedule. It stays out of the sidebar until there is something to act on; open its status page from the Command Center with “Claude Code updates: open status”."
+        info="Claude Code only updates itself from its terminal interface. Paseo runs it without one, so this plugin runs the CLI's own updater on a schedule. Its status page is behind “Claude Code updates” in the sidebar, and in the Command Center as “Claude Code updates: open status”."
       >
         <SettingsCard>
           <SettingsSwitch

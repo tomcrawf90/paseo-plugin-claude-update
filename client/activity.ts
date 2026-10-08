@@ -23,6 +23,8 @@ export interface ActivityView {
 
 export const CHECK_LABEL = "Check now";
 export const UPDATE_LABEL = "Update now";
+/** Under the buttons, so that pressing "Check now" is known to be safe. */
+export const CHECK_NOW_HINT = "Check now only looks and installs nothing. Update now installs a newer version if there is one.";
 
 /**
  * What the buttons and the progress line say. The host's word comes first: a

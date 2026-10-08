@@ -2,11 +2,11 @@ import type { PluginTheme } from "@getpaseo/plugin";
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { useRpc, useSettings } from "@getpaseo/plugin/client";
 import { ScrollView, useToast } from "@getpaseo/plugin/client/react-native";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
-import { OUTCOME_LABELS, relativeTime } from "../shared/format";
+import { lastCheckText, lastResult, lastUpdateText, nextCheckText, OUTCOME_LABELS, relativeTime } from "../shared/format";
 import {
   AUTO_UPDATE_LABEL,
   AUTO_UPDATE_OFF,
@@ -16,14 +16,9 @@ import {
   updateSettings,
   withAutoUpdate,
 } from "../shared/settings";
-import { checkNow, dismissAttention, getStatus, type ClaudeProcess, type Status } from "../shared/status";
-import { activityView, resultOf, runEnded, type Action, type RunResult } from "./activity";
-import { publishStatus } from "./bus";
-
-export const STATUS_QUERY_KEY = ["claude-update", "status"] as const;
-const REFRESH_MS = 30_000;
-/** While a check is running the page asks again this often, so it sees the run end. */
-const BUSY_REFRESH_MS = 2_000;
+import { dismissAttention, type ClaudeProcess, type Status } from "../shared/status";
+import { CHECK_NOW_HINT, type RunResult } from "./activity";
+import { STATUS_QUERY_KEY, useCheck } from "./check";
 
 function useStyles(theme: PluginTheme, compact: boolean) {
   return useMemo(
@@ -110,10 +105,10 @@ function resultColor(theme: PluginTheme, result: RunResult): string {
 }
 
 /**
- * The "Auto-update Claude Code" switch, at the top of the page so it is one
+ * The "Auto-update Claude Code" switch, on the status page so it is one
  * click away. It is the same setting as the one on the settings screen.
  */
-function AutoUpdateCard({ theme, styles, nextCheck }: { theme: PluginTheme; styles: Styles; nextCheck: string | null }) {
+function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles }) {
   const settings = useSettings(updateSettings);
   const toast = useToast();
 
@@ -173,7 +168,6 @@ function AutoUpdateCard({ theme, styles, nextCheck }: { theme: PluginTheme; styl
           Pinned at {settings.values.pinnedVersion} in this plugin's settings: that version is held, and newer ones are not installed.
         </Text>
       ) : null}
-      {ready && on && settings.values.enabled && nextCheck !== null ? <Text style={styles.muted}>Next scheduled check: {nextCheck}.</Text> : null}
       <Text style={styles.muted}>{AUTO_UPDATE_SAFETY}</Text>
     </View>
   );
@@ -181,61 +175,11 @@ function AutoUpdateCard({ theme, styles, nextCheck }: { theme: PluginTheme; styl
 
 export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
   const styles = useStyles(theme, layout.compact);
-  const toast = useToast();
   const queryClient = useQueryClient();
-  const loadStatus = useRpc(getStatus);
-  const runCheck = useRpc(checkNow);
   const dismiss = useRpc(dismissAttention);
-
-  const status = useQuery({
-    queryKey: STATUS_QUERY_KEY,
-    queryFn: () => loadStatus({}),
-    refetchInterval: (query) => (query.state.data?.checking ? BUSY_REFRESH_MS : REFRESH_MS),
-  });
-  const [pressedAt, setPressedAt] = useState(0);
-  const [result, setResult] = useState<RunResult | null>(null);
-  const check = useMutation({
-    mutationFn: (action: Action) => runCheck({ apply: action === "update" }),
-    async onMutate() {
-      setPressedAt(Date.now());
-      setResult(null);
-      // A status read that is under way would land after the answer and show the page as it was.
-      await queryClient.cancelQueries({ queryKey: STATUS_QUERY_KEY });
-    },
-    onSuccess(next) {
-      queryClient.setQueryData(STATUS_QUERY_KEY, next);
-      // The result is shown on this page, where it was asked for. Only a
-      // failure is worth a toast as well.
-      setResult(resultOf(next, Date.now()));
-      if (next.lastOutcome === "failed") toast.error(next.lastMessage ?? "The check failed.");
-    },
-    onError(error) {
-      const message = error instanceof Error ? error.message : "The check could not be run.";
-      setResult({ outcome: null, message, tone: "bad", at: Date.now() });
-      toast.error(message);
-    },
-  });
-  // A clock for the "12 s" on a running check and the "5 min ago" elsewhere.
-  const [now, setNow] = useState(() => Date.now());
-  const pending = check.isPending ? { action: check.variables, since: pressedAt } : null;
-  const { busy, active, checkLabel, updateLabel, line } = activityView(status.data ?? null, pending, now);
-  useEffect(() => {
-    setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), busy ? 1000 : REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [busy]);
-
-  // The sidebar row follows what this page sees: dismissing a notice here
-  // takes the row away at once. A run this page did not start (the schedule,
-  // the Command Center, another window) shows its result here when it ends.
-  const seen = useRef<Status | null>(null);
-  useEffect(() => {
-    const next = status.data;
-    if (next === undefined) return;
-    publishStatus(next);
-    if (runEnded(seen.current, next) && !check.isPending) setResult(resultOf(next, Date.now()));
-    seen.current = next;
-  }, [status.data, check.isPending]);
+  const check = useCheck();
+  const { busy, active, checkLabel, updateLabel, line } = check.view;
+  const { result, now } = check;
 
   const clear = useMutation({
     mutationFn: () => dismiss({}),
@@ -245,7 +189,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
     },
   });
 
-  if (status.isPending) {
+  if (check.loading) {
     return (
       <View style={[styles.screen, styles.content]}>
         <Text style={styles.muted}>Loading…</Text>
@@ -253,27 +197,21 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
     );
   }
   // A poll that fails while there is something to show leaves it showing; the next one tries again.
-  if (status.data === undefined) {
+  if (check.data === undefined) {
     return (
       <View style={[styles.screen, styles.content]}>
         <Text style={styles.heading}>Claude Code updates</Text>
-        <Text style={{ color: theme.colors.statusDanger }}>
-          {status.error instanceof Error ? status.error.message : "Could not read the update status."}
-        </Text>
+        <Text style={{ color: theme.colors.statusDanger }}>{check.error ?? "Could not read the update status."}</Text>
       </View>
     );
   }
 
-  const data = status.data;
+  const data = check.data;
+  const last = lastResult(data);
+  const lastUpdate = lastUpdateText(data.history, now);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Claude Code updates</Text>
-
-      <AutoUpdateCard
-        theme={theme}
-        styles={styles}
-        nextCheck={data.nextCheckAt === null ? null : relativeTime(data.nextCheckAt, now)}
-      />
 
       {data.attention !== null ? (
         <View style={[styles.card, { borderColor: data.attention.kind === "failed" ? theme.colors.statusDanger : theme.colors.accent }]}>
@@ -292,28 +230,15 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
         </View>
       ) : null}
 
+      {/* First on the page: whether the plugin is working, and the button to find out now. */}
       <View style={styles.card}>
-        <Row styles={styles} label="Installed">
-          {data.installedVersion ?? "not checked yet"}
-        </Row>
-        <Row styles={styles} label="Target">
-          {data.targetVersion ?? "not checked yet"}
-        </Row>
-        <Row styles={styles} label="Claude Code channel">
-          {data.claudeChannel ?? "unreadable"}
-        </Row>
-        <Row styles={styles} label="Last check">
-          {relativeTime(data.lastCheckAt, now)}
-        </Row>
-        <Row styles={styles} label="Next check">
-          {data.nextCheckAt === null ? (data.lastCheckAt === null ? "shortly" : "off") : relativeTime(data.nextCheckAt, now)}
+        <Text style={styles.cardTitle}>Checks</Text>
+        <Row styles={styles} label="Last checked">
+          {lastCheckText(data, now)}
         </Row>
         <View style={styles.row}>
           <Text style={styles.label}>Last result</Text>
-          <Text style={[styles.value, { color: outcomeColor(theme, data) }]}>
-            {data.lastOutcome === null ? "none yet" : OUTCOME_LABELS[data.lastOutcome]}
-            {data.consecutiveFailures > 1 ? ` (${data.consecutiveFailures} in a row)` : ""}
-          </Text>
+          <Text style={[styles.value, { color: outcomeColor(theme, data) }]}>{last.label}</Text>
         </View>
         {line !== null ? (
           <View style={styles.progress} accessibilityLiveRegion="polite">
@@ -324,9 +249,15 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
           <Text style={[styles.value, { color: resultColor(theme, result) }]} accessibilityLiveRegion="polite">
             Finished {relativeTime(new Date(result.at).toISOString(), now)}: {result.message}
           </Text>
-        ) : data.lastMessage !== null ? (
-          <Text style={styles.muted}>{data.lastMessage}</Text>
+        ) : last.detail !== null ? (
+          <Text style={styles.muted}>{last.detail}</Text>
         ) : null}
+        <Row styles={styles} label="Last update">
+          {lastUpdate ?? "none in the history below"}
+        </Row>
+        <Row styles={styles} label="Next scheduled check">
+          {nextCheckText(data, now)}
+        </Row>
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
@@ -334,7 +265,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
             accessibilityState={{ disabled: busy, busy: active === "check" }}
             disabled={busy}
             style={[styles.button, busy && active !== "check" ? styles.disabled : null]}
-            onPress={() => check.mutate("check")}
+            onPress={() => check.run("check")}
           >
             {active === "check" ? <ActivityIndicator size="small" color={theme.colors.accentForeground} /> : null}
             <Text style={styles.buttonText}>{checkLabel}</Text>
@@ -345,12 +276,28 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
             accessibilityState={{ disabled: busy, busy: active === "update" }}
             disabled={busy}
             style={[styles.quietButton, busy && active !== "update" ? styles.disabled : null]}
-            onPress={() => check.mutate("update")}
+            onPress={() => check.run("update")}
           >
             {active === "update" ? <ActivityIndicator size="small" color={theme.colors.foreground} /> : null}
             <Text style={styles.quietButtonText}>{updateLabel}</Text>
           </Pressable>
         </View>
+        <Text style={styles.muted}>{CHECK_NOW_HINT}</Text>
+      </View>
+
+      <AutoUpdateCard theme={theme} styles={styles} />
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Versions</Text>
+        <Row styles={styles} label="Installed">
+          {data.installedVersion ?? "not checked yet"}
+        </Row>
+        <Row styles={styles} label="Target">
+          {data.targetVersion ?? "not checked yet"}
+        </Row>
+        <Row styles={styles} label="Claude Code channel">
+          {data.claudeChannel ?? "unreadable"}
+        </Row>
       </View>
 
       {data.rollbackCommand !== null ? (
