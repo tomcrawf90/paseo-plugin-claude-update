@@ -324,3 +324,78 @@ describe("status", () => {
     expect(status.staleProcesses).toEqual([]);
   });
 });
+
+describe("release notes", () => {
+  const CHANGELOG = "# Changelog\n\n## 2.1.292\n\n- Added a model\n\n## 2.1.290\n\n- Fixed a thing\n\n## 2.1.285\n\n- Older\n";
+  const SOURCE = "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md";
+
+  it("are read after an update, for the versions it brought, and reported in the status", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.pointers["CHANGELOG.md"] = CHANGELOG;
+    const s = start(h);
+    await s.tick();
+    expect(h.store.state.lastOutcome).toBe("updated");
+    const notes = (await s.status()).releaseNotes;
+    expect(notes).toMatchObject({ from: "2.1.285", to: "2.1.292", error: null, moreVersions: 0 });
+    expect(notes?.versions.map((version) => version.version)).toEqual(["2.1.292", "2.1.290"]);
+  });
+
+  it("are not read again while the range is the same", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.pointers["CHANGELOG.md"] = CHANGELOG;
+    const s = start(h, settingsWith(), { minimumGapMs: 0 });
+    await s.tick();
+    await s.tick();
+    h.clock.now += 5 * HOUR;
+    await s.tick();
+    expect(h.fetched.filter((url) => url === SOURCE)).toHaveLength(1);
+  });
+
+  it("do not change how an update ends when they cannot be read, and are asked for again an hour later", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    h.pointers["CHANGELOG.md"] = new Error("HTTP 503");
+    const s = start(h, settingsWith(), { minimumGapMs: 0 });
+    await s.tick();
+    const status = await s.status();
+    expect(status).toMatchObject({ lastOutcome: "updated", installedVersion: "2.1.292", consecutiveFailures: 0 });
+    expect(status.attention?.kind).toBe("updated");
+    expect(status.releaseNotes).toMatchObject({ versions: [], error: "Could not read the release notes: HTTP 503" });
+
+    h.clock.now += 10 * 60_000;
+    await s.tick();
+    expect(h.fetched.filter((url) => url === SOURCE)).toHaveLength(1);
+    h.pointers["CHANGELOG.md"] = CHANGELOG;
+    h.clock.now += HOUR;
+    await s.tick();
+    expect((await s.status()).releaseNotes?.error).toBeNull();
+  });
+
+  it("are not asked for by the check itself, so the answer to it does not wait for them", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    let asked = 0;
+    const fetchText = h.deps.fetchText;
+    h.deps.fetchText = (url) => {
+      if (url === SOURCE) {
+        asked += 1;
+        return new Promise(() => {});
+      }
+      return fetchText(url);
+    };
+    const s = start(h, settingsWith({ mode: "notify" }));
+    const state = await s.check("manual", true);
+    expect(state.lastOutcome).toBe("updated");
+    // The check has answered while the notes are still being read, which here never ends.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(asked).toBe(1);
+    expect((await s.status()).releaseNotes).toBeNull();
+  });
+
+  it("are for the waiting update when one is found and not installed", async () => {
+    const h = harness("2.1.290", "2.1.292");
+    h.pointers["CHANGELOG.md"] = CHANGELOG;
+    const s = start(h, settingsWith({ mode: "notify" }));
+    await s.tick();
+    expect(h.store.state.lastOutcome).toBe("update-available");
+    expect((await s.status()).releaseNotes).toMatchObject({ from: "2.1.290", to: "2.1.292" });
+  });
+});

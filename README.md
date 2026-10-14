@@ -24,6 +24,7 @@ Claude Code** it also runs the CLI's own updater, `claude update`, and tells you
 | Updates | Off until you choose it. With "Auto-update Claude Code" on, the scheduled check runs `claude update` when the CLI is behind, then reads the version again to confirm. Until then it only tells you; "Update now" installs on request. |
 | Reports | An update that went in: on its status page and in the history there, with a macOS notification. Something you have to act on (an update waiting with auto-update off, a failure): named on its sidebar row as well. Everything goes to a log file. |
 | Lists old processes | On the status page: running Claude Code processes (Paseo agents and Claude's own background daemon) that are still on an older version. It never restarts or interrupts them. |
+| Shows release notes | On the status page: the notes for the update that is waiting, or else for the last update, with a link to the full notes for every release. |
 | Shows that it is working | Its status page says when it last checked (how long ago and the clock time), how that ended, when the version last changed, and when it checks next, and has a "Check now" button. The settings screen has the same lines. |
 | Stays out of the way | While Claude Code is up to date, and after an update that worked, the sidebar row reads only "Claude Code updates" and no toast is raised, whatever is still running an older version. A check that finds nothing new changes only the "Last checked" time. |
 
@@ -69,6 +70,17 @@ Whatever it reads, the row opens the status page, which has the detail. An updat
 never changes the row: it is on the status page and in its history, with a macOS notification if those are on. Processes still on
 an older version are listed on the status page and nowhere else.
 
+**Release notes.** The "Release notes" card on the status page shows what changed: for an update
+that is waiting, the versions it would bring; otherwise the versions the last update brought (or the
+installed version alone, before any update). The newest three versions are shown, each with its
+first 12 changes, and the rest are counted. "Full release notes" opens
+[the Claude Code changelog](https://code.claude.com/docs/en/changelog), which has every release; its
+address is on the card as well, to copy. The notes come from the changelog Anthropic publishes in
+[the claude-code repository](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md). They are
+read about a minute after a check finds a new version, never as part of the check, so they cannot
+hold up or change an update. If they cannot be read, the card says why, keeps the link, and tries
+again an hour later.
+
 **Auto-update Claude Code.** On: the next scheduled check installs a new version by itself, with
 `claude update`. Off: you are only told. Either way, agents that are already running keep the
 version they started with until they are restarted, and after every update the status page shows
@@ -109,6 +121,7 @@ there yourself and choose `stable` here. The plugin never edits Claude Code's fi
 | A bad release | Roll back (below), or turn auto-update off, use the `stable` channel, or a pin. |
 | Failures | One attempt per check, no retry inside a check. After a failure the wait doubles (4 h, 8 h, 16 h, then 24 h at the default interval). An update that was tried and did not go in is told at once (and again if it makes three failures in a row); a check that fails before that (no network, say) is told once, at the third failure in a row. |
 | Overlap | One check at a time. The CLI's installer also takes its own lock. |
+| Network | Two reads, nothing sent: the release channel's pointer (`downloads.claude.ai`), and the Claude Code changelog on GitHub (`raw.githubusercontent.com`) once per new version, for the release notes. |
 | Your environment | To find which agent a process belongs to it reads process environments on the host, takes only `PASEO_AGENT_ID` from them, and stores and logs nothing else. |
 
 ## Rolling back
@@ -132,6 +145,7 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 | `state.json` | Installed and target version, last check and result, failure count, previous version. |
 | `history.jsonl` | One line per update, failure or notice. |
 | `plugin.log` | One line per check, rotated once at 512 KB. |
+| `notes.json` | The release notes the status page shows, and when they were read. |
 
 `paseo plugin logs claude-update` shows start-up and unexpected errors.
 

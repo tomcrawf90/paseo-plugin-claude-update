@@ -2,6 +2,7 @@ import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 
 import { autoUpdateOn, type UpdateSettings } from "../shared/settings";
 import type { Activity, ClaudeProcess, Status } from "../shared/status";
+import { notesRange, notesWanted, readReleaseNotes } from "./notes";
 import { listClaudeProcesses, staleProcesses } from "./processes";
 import type { State } from "./store";
 import { isDue, nextCheckAt, runCheck, type Trigger, type UpdaterDependencies } from "./updater";
@@ -19,7 +20,7 @@ export interface ServiceOptions {
 }
 
 export interface Service {
-  /** One scheduler tick; resolves when any check it started has finished. */
+  /** One scheduler tick; resolves when any check it started, and any release notes it asked for, have finished. */
   tick(): Promise<void>;
   /** Checks now. Joins a check already running instead of starting a second one. */
   check(trigger: Trigger, apply: boolean): Promise<State>;
@@ -67,6 +68,26 @@ export function startService(
   let activity: Activity | null = null;
   let lastScheduledAt: number | null = null;
   let stopped = false;
+  let notesRefresh: Promise<void> | null = null;
+
+  /**
+   * Reads the release notes for the range the state points at, when the ones
+   * on disk are for another range or failed a while ago. Never part of a
+   * check, so it cannot slow an update or change how one ends.
+   */
+  function refreshNotes(): Promise<void> {
+    notesRefresh ??= (async () => {
+      const range = notesRange(await deps.store.readState());
+      if (range === null || stopped) return;
+      if (!notesWanted(await deps.store.readNotes(), range, deps.now().getTime())) return;
+      await deps.store.writeNotes(await readReleaseNotes(deps.fetchText, range, deps.now()));
+    })()
+      .catch((error: unknown) => console.error("[claude-update] release notes could not be stored:", error))
+      .finally(() => {
+        notesRefresh = null;
+      });
+    return notesRefresh;
+  }
 
   /**
    * The one place a check starts. Callers await between looking at `running`
@@ -92,6 +113,11 @@ export function startService(
 
   async function tick(): Promise<void> {
     if (stopped || running !== null) return;
+    await scheduledCheck();
+    if (!stopped && running === null) await refreshNotes();
+  }
+
+  async function scheduledCheck(): Promise<void> {
     try {
       const settings = await readSettings();
       if (settings === null || stopped || running !== null) return;
@@ -119,17 +145,21 @@ export function startService(
         const settings = await readSettings();
         if (settings === null) throw new Error("The plugin settings are invalid; reset them in Settings.");
         if (running !== null) return running;
-        return start(settings, trigger, apply);
+        const state = await start(settings, trigger, apply);
+        // Not awaited: the answer to "Check now" or "Update now" does not wait for the notes.
+        void refreshNotes();
+        return state;
       } finally {
         // Nothing started (the settings could not be read): nothing is running.
         if (running === null) activity = null;
       }
     },
     async status(paseo) {
-      const [state, settings, history, listed, titles] = await Promise.all([
+      const [state, settings, history, notes, listed, titles] = await Promise.all([
         deps.store.readState(),
         readSettings(),
         deps.store.readHistory(HISTORY_SHOWN),
+        deps.store.readNotes(),
         listClaudeProcesses(deps.run, platform),
         agentTitles(paseo),
       ]);
@@ -159,6 +189,7 @@ export function startService(
         staleProcesses: stale,
         processListSupported: listed.supported,
         history,
+        releaseNotes: notes,
         dataDirectory: deps.store.directory,
       };
     },

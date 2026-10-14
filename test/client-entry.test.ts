@@ -34,6 +34,7 @@ const QUIET: Status = {
   staleProcesses: [],
   processListSupported: true,
   history: [],
+  releaseNotes: null,
   dataDirectory: "/data",
 };
 const AVAILABLE: Status = {

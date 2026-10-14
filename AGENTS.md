@@ -17,9 +17,10 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `server/updater.ts` | One check, start to finish (`runCheck`), plus the schedule arithmetic (`isDue`, `backoffMs`). All the decisions are here. |
 | `server/service.ts` | The timer, the one-check-at-a-time guard, and the status the UI reads. |
 | `server/handlers.ts` | The three RPCs (`status.get`, `status.check`, `status.dismiss`), each answering with the status after the call. |
+| `server/notes.ts`, `shared/notes.ts` | Release notes: which versions to show (`notesRange`), when to read them again (`notesWanted`), reading and cutting the changelog (`parseChangelog`, `selectNotes`). The service reads them after a check, never inside one. |
 | `server/claude.ts` | The only calls to the CLI: `--version`, `update`, `install <version>`; the release pointer; Claude's own channel. |
 | `server/processes.ts` | Lists running Claude processes and their versions (`ps` + `lsof`, macOS). Read only. |
-| `server/store.ts`, `paths.ts`, `run.ts`, `notify.ts` | State and log files; data directory and finding `claude`; running a program without a shell; macOS notification. |
+| `server/store.ts`, `paths.ts`, `run.ts`, `notify.ts` | State, notes and log files; data directory and finding `claude`; running a program without a shell; macOS notification. |
 | `shared/` | Settings schema, RPC contracts, version and display helpers. No Node or React imports. |
 | `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. Three modules hold logic apart from React Native so it can be tested: `client/sidebar.ts` (adding, changing and removing the row, one change at a time), `client/activity.ts` (what the buttons and the progress line say) and `client/bus.ts` (passes each status read to the sidebar row). `client/check.ts` is the hook both screens use for the status and the two buttons. What the "Checks" lines say (last check, last result, last update, next check) is in `shared/format.ts`. `test/client-entry.test.ts` runs the entry against a pretend app. |
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
@@ -115,6 +116,7 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 - A failure is told at the third in a row, or at once when the check had reached the installer (`fail` in `server/updater.ts`; told at the first failure of that install, through `failedInstall` in the state, and again only if the failures reach three in a row). While that notice is showing, a look that works leaves it alone, and the update still waiting is told again by the first look after it is dismissed.
 - A check makes one attempt and never retries inside itself. The state is written first; anything after a successful update (the history line, the log line, counting old processes, notifying) must not be able to lose the record of it.
 - UI: React Native primitives, colours from `theme.colors`, padding from `layout.compact`.
+- Release notes are read by the service after a check (`refreshNotes` in `server/service.ts`), never inside `runCheck`: a slow or failed read must not delay, fail or change an update. They change nothing in the sidebar row or the notices.
 - Every behaviour change comes with a test. A new CLI output or failure mode goes into `test/stub/claude` too.
 
 ## Releases
@@ -164,6 +166,7 @@ plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it 
 | Output of `claude --version` | `extractVersion` in `shared/version.ts`. Only this output is parsed; success is judged by comparing versions before and after, never by the updater's wording. |
 | Exit codes of `update` / `install` | `runCheck`. Today: 0 on success and on "up to date"; 0 with no change when updates are disabled by policy; 1 on a failed download or unknown version. |
 | Release pointer URL | `RELEASES_URL` in `server/claude.ts` (`https://downloads.claude.ai/claude-code-releases/<channel>`, a bare version). If it moves, checks fail with a clear message and nothing is installed. |
+| Changelog location or format | `CHANGELOG_SOURCE_URL` and `RELEASE_NOTES_URL` in `shared/notes.ts`. The source is `CHANGELOG.md` in `anthropics/claude-code` (`## 2.1.300`, then `- ` lines; some version numbers have no entry); the link is the documentation's changelog page, built from it. If either moves, the card shows the reason and the link, and updates are unaffected. |
 | Channels | `CHANNELS` in `shared/settings.ts`. The CLI also accepts an undocumented `rc`; it is left out on purpose. `claude update` follows `autoUpdatesChannel` in `~/.claude/settings.json`, which the plugin reads to detect a mismatch. Managed and project settings can set it too and are not read (`readClaudeChannel` in `server/claude.ts`). |
 | A check-only or dry-run flag on `claude update` | None exists (2.1.292). If one appears, use it in place of the release pointer. |
 | Headless sessions start updating themselves | The plugin becomes a status display; auto-update off is already the default. |

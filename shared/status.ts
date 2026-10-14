@@ -1,6 +1,8 @@
 import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
+import { releaseNotesSchema } from "./notes";
+
 export const OUTCOMES = [
   "up-to-date",
   "updated",
@@ -76,6 +78,11 @@ export const statusSchema = z.object({
   staleProcesses: z.array(processSchema),
   processListSupported: z.boolean(),
   history: z.array(historyEntrySchema),
+  /**
+   * Release notes for the update that is waiting, else the last update, else
+   * the installed version. Null until they have been asked for once.
+   */
+  releaseNotes: releaseNotesSchema.nullable(),
   dataDirectory: z.string(),
 });
 export type Status = z.infer<typeof statusSchema>;

@@ -1,4 +1,6 @@
+import type { ReleaseNotes } from "./notes";
 import type { HistoryEntry, Outcome, Status } from "./status";
+import { compareVersions } from "./version";
 
 export const OUTCOME_LABELS: Record<Outcome, string> = {
   "up-to-date": "Up to date",
@@ -106,6 +108,29 @@ export function lastUpdateText(
   }
   const versions = entry.from !== null && entry.to !== null ? `${entry.from} → ${entry.to}, ` : entry.to !== null ? `to ${entry.to}, ` : "";
   return `${versions}${bothTimes(entry.at, now, offsetMinutes)}`;
+}
+
+/** What the release notes on the status page are for, in one line. */
+export function notesSummary(notes: ReleaseNotes, installed: string | null): string {
+  if (installed !== null && compareVersions(notes.to, installed) > 0) {
+    return `What ${notes.to} brings over the installed ${notes.from ?? installed}. It is not installed yet.`;
+  }
+  if (notes.from === null) return `Claude Code ${notes.to}, the installed version.`;
+  return `What the last update, ${notes.from} → ${notes.to}, brought.`;
+}
+
+const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
+
+/** `and 40 more changes`, under a version whose list was cut. */
+export function moreItemsText(count: number): string {
+  return `and ${plural(count, "more change", "more changes")}`;
+}
+
+/** Under the versions shown, when the range had more of them. */
+export function moreVersionsText(count: number): string {
+  return count === 1
+    ? "1 older version in this range is not shown here; it is in the full notes."
+    : `${count} older versions in this range are not shown here; they are in the full notes.`;
 }
 
 /** How long something has been going: `8 s`, `1 min 05 s`. */
