@@ -6,7 +6,7 @@ import { checkNow, getStatus, type Status } from "../shared/status";
 
 // The entry pulls in the screens, which import the host's modules. Nothing
 // here renders them, so empty stand-ins are enough to load the entry.
-vi.mock("@getpaseo/plugin/client", () => ({ useRpc: () => undefined, useSettings: () => undefined }));
+vi.mock("@getpaseo/plugin/client", () => ({ openExternalUrl: undefined, useRpc: () => undefined, useSettings: () => undefined }));
 vi.mock("@getpaseo/plugin/client/react-native", () => ({ ScrollView: () => null, useToast: () => undefined }));
 vi.mock("@getpaseo/plugin/client/ui", () => ({}));
 vi.mock("@tanstack/react-query", () => ({}));
@@ -34,6 +34,7 @@ const QUIET: Status = {
   staleProcesses: [],
   processListSupported: true,
   history: [],
+  releaseNotes: null,
   dataDirectory: "/data",
 };
 const AVAILABLE: Status = {

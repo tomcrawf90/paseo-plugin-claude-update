@@ -1,12 +1,23 @@
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
-import { useRpc, useSettings } from "@getpaseo/plugin/client";
+import { openExternalUrl, useRpc, useSettings } from "@getpaseo/plugin/client";
 import { ScrollView, useToast } from "@getpaseo/plugin/client/react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
-import { lastCheckText, lastResult, lastUpdateText, nextCheckText, OUTCOME_LABELS, relativeTime } from "../shared/format";
+import {
+  lastCheckText,
+  lastResult,
+  lastUpdateText,
+  moreItemsText,
+  moreVersionsText,
+  nextCheckText,
+  notesSummary,
+  OUTCOME_LABELS,
+  relativeTime,
+} from "../shared/format";
+import { RELEASE_NOTES_URL, type ReleaseNotes } from "../shared/notes";
 import {
   AUTO_UPDATE_LABEL,
   AUTO_UPDATE_OFF,
@@ -173,6 +184,71 @@ function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles 
   );
 }
 
+/**
+ * The notes for the update that is waiting or the last one, cut to length,
+ * and the way to the full notes. The link is there whether or not the notes
+ * could be read.
+ */
+function ReleaseNotesCard({
+  theme,
+  styles,
+  notes,
+  installed,
+}: {
+  theme: PluginTheme;
+  styles: Styles;
+  notes: ReleaseNotes | null;
+  installed: string | null;
+}) {
+  const toast = useToast();
+  // Paseo 0.10.3 may not give plugins this; the address below can be copied either way.
+  const canOpen = typeof openExternalUrl === "function";
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>Release notes</Text>
+      {notes === null ? (
+        <Text style={styles.muted}>Not read yet. They are read right after a check.</Text>
+      ) : (
+        <>
+          <Text style={styles.muted}>{notesSummary(notes, installed)}</Text>
+          {notes.error !== null ? <Text style={{ color: theme.colors.statusWarning, fontSize: 13 }}>{notes.error}</Text> : null}
+          {notes.versions.map((version) => (
+            <View key={version.version} style={{ gap: 4 }}>
+              <Text style={[styles.value, { fontWeight: "600" }]}>{version.version}</Text>
+              {version.items.map((item, index) => (
+                <Text key={index} style={styles.value}>
+                  • {item}
+                </Text>
+              ))}
+              {version.moreItems > 0 ? <Text style={styles.muted}>{moreItemsText(version.moreItems)}</Text> : null}
+            </View>
+          ))}
+          {notes.moreVersions > 0 ? <Text style={styles.muted}>{moreVersionsText(notes.moreVersions)}</Text> : null}
+        </>
+      )}
+      {canOpen ? (
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Open the full Claude Code release notes"
+            style={styles.quietButton}
+            onPress={() =>
+              void Promise.resolve()
+                .then(() => openExternalUrl(RELEASE_NOTES_URL))
+                .catch(() => toast.error("Could not open the release notes."))
+            }
+          >
+            <Text style={styles.quietButtonText}>Full release notes</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <Text selectable style={styles.muted}>
+        All releases: {RELEASE_NOTES_URL}
+      </Text>
+    </View>
+  );
+}
+
 export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
   const styles = useStyles(theme, layout.compact);
   const queryClient = useQueryClient();
@@ -299,6 +375,8 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
           {data.claudeChannel ?? "unreadable"}
         </Row>
       </View>
+
+      <ReleaseNotesCard theme={theme} styles={styles} notes={data.releaseNotes} installed={data.installedVersion} />
 
       {data.rollbackCommand !== null ? (
         <View style={styles.card}>

@@ -13,6 +13,7 @@ A version marked "not published" was finished but never reached npm; its changes
 - An update that was tried and did not go in is told at once, in the row, on the status page and by macOS notification. Before, it waited for the third failure in a row, as a failed check still does. The notice stays through a "Check now" that works, until it is dismissed or the update goes in.
 - A notice of a waiting update that was replaced by a failure notice comes back when checks work again.
 - The status RPC reports `autoInstall`: whether the schedule installs what it finds.
+- The status page has a "Release notes" card: the Claude Code release notes for the update that is waiting, or else the last update (the newest three versions, each cut to its first 12 changes), and a link to the full changelog for every release. They are read from Anthropic's changelog after a check, never during one; if they cannot be read the card says why and keeps the link. The status RPC reports them as `releaseNotes`.
 
 ## 0.2.0 - not published
 

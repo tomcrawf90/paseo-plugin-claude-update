@@ -1,3 +1,4 @@
+import type { ReleaseNotes } from "../shared/notes";
 import { DEFAULT_SETTINGS, type UpdateSettings } from "../shared/settings";
 import type { HistoryEntry } from "../shared/status";
 import type { RunResult, Runner } from "../server/run";
@@ -6,12 +7,15 @@ import type { UpdaterDependencies } from "../server/updater";
 
 /** Test doubles shared by the test files. */
 
-export function memoryStore(initial: Partial<State> = {}): Store & { state: State; history: HistoryEntry[]; lines: string[] } {
+export function memoryStore(
+  initial: Partial<State> = {},
+): Store & { state: State; history: HistoryEntry[]; lines: string[]; notes: ReleaseNotes | null } {
   const store = {
     directory: "/memory",
     state: { ...EMPTY_STATE, ...initial } as State,
     history: [] as HistoryEntry[],
     lines: [] as string[],
+    notes: null as ReleaseNotes | null,
     async readState() {
       return { ...store.state };
     },
@@ -26,6 +30,12 @@ export function memoryStore(initial: Partial<State> = {}): Store & { state: Stat
     },
     async log(line: string) {
       store.lines.push(line);
+    },
+    async readNotes() {
+      return store.notes;
+    },
+    async writeNotes(notes: ReleaseNotes) {
+      store.notes = notes;
     },
   };
   return store;

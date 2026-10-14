@@ -7,7 +7,10 @@ import {
   lastCheckText,
   lastResult,
   lastUpdateText,
+  moreItemsText,
+  moreVersionsText,
   nextCheckText,
+  notesSummary,
   QUIET_ROW,
   relativeTime,
   sidebarRow,
@@ -190,5 +193,23 @@ describe("the sidebar row", () => {
       expect(title.length).toBeLessThanOrEqual(SIDEBAR_TITLE_MAX);
       expect(title).not.toMatch(/updated|up to date|old version/i);
     }
+  });
+});
+
+describe("release notes text", () => {
+  const notes = { from: "2.1.285", to: "2.1.292", versions: [], moreVersions: 0, fetchedAt: at(0), error: null };
+  it("says what the notes are for", () => {
+    expect(notesSummary(notes, "2.1.292")).toBe("What the last update, 2.1.285 → 2.1.292, brought.");
+    expect(notesSummary(notes, "2.1.285")).toBe("What 2.1.292 brings over the installed 2.1.285. It is not installed yet.");
+    expect(notesSummary({ ...notes, from: null }, "2.1.292")).toBe("Claude Code 2.1.292, the installed version.");
+    const nearest = { ...notes, from: null, to: "2.1.291", versions: [{ version: "2.1.290", items: [], moreItems: 0 }] };
+    expect(notesSummary(nearest, "2.1.291")).toBe("The changelog has no entry for 2.1.291, the installed version; this is 2.1.290, the one before it.");
+  });
+
+  it("counts what is not shown", () => {
+    expect(moreItemsText(1)).toBe("and 1 more change");
+    expect(moreItemsText(40)).toBe("and 40 more changes");
+    expect(moreVersionsText(1)).toBe("1 older version in this range is not shown here; it is in the full notes.");
+    expect(moreVersionsText(4)).toBe("4 older versions in this range are not shown here; they are in the full notes.");
   });
 });

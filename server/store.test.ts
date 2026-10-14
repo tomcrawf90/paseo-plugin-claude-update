@@ -58,6 +58,23 @@ describe("the file store", () => {
     expect((await store.readHistory(2)).map((item) => item.message)).toEqual(["three", "two"]);
   });
 
+  it("round-trips release notes, and reads a damaged notes file as none", async () => {
+    const store = createFileStore(directory);
+    expect(await store.readNotes()).toBeNull();
+    const notes = {
+      from: "2.1.285",
+      to: "2.1.292",
+      versions: [{ version: "2.1.292", items: ["Added a model"], moreItems: 0 }],
+      moreVersions: 0,
+      fetchedAt: "2026-10-07T10:00:00.000Z",
+      error: null,
+    };
+    await store.writeNotes(notes);
+    expect(await createFileStore(directory).readNotes()).toEqual(notes);
+    await writeFile(join(directory, "notes.json"), '{"from": 1}', "utf8");
+    expect(await store.readNotes()).toBeNull();
+  });
+
   it("appends to the log and rotates it once it is large", async () => {
     const store = createFileStore(directory);
     await store.log("first");

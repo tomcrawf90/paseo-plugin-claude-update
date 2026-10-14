@@ -1,6 +1,7 @@
 import { appendFile, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { releaseNotesSchema, type ReleaseNotes } from "../shared/notes";
 import { historyEntrySchema, type Attention, type HistoryEntry, type Outcome } from "../shared/status";
 
 /** What the plugin remembers between checks and across restarts: `state.json`. */
@@ -46,6 +47,9 @@ export interface Store {
   appendHistory(entry: HistoryEntry): Promise<void>;
   readHistory(limit: number): Promise<HistoryEntry[]>;
   log(line: string): Promise<void>;
+  /** The last release notes read, or null when there are none or the file cannot be understood. */
+  readNotes(): Promise<ReleaseNotes | null>;
+  writeNotes(notes: ReleaseNotes): Promise<void>;
 }
 
 const LOG_ROTATE_BYTES = 512 * 1024;
@@ -55,14 +59,24 @@ const LOG_ROTATE_BYTES = 512 * 1024;
  * - `state.json`: the latest state, replaced whole.
  * - `history.jsonl`: one line per event worth keeping (an update, a failure, a notice).
  * - `plugin.log`: one line per check, rotated once to `plugin.log.1`.
+ * - `notes.json`: the release notes the status page shows, replaced whole.
  */
 export function createFileStore(directory: string): Store {
   const statePath = join(directory, "state.json");
   const historyPath = join(directory, "history.jsonl");
   const logPath = join(directory, "plugin.log");
+  const notesPath = join(directory, "notes.json");
 
   async function ensureDirectory(): Promise<void> {
     await mkdir(directory, { recursive: true });
+  }
+
+  /** Writes a whole file through a temporary one, so a reader never sees half of it. */
+  async function replace(path: string, value: unknown): Promise<void> {
+    await ensureDirectory();
+    const temporary = `${path}.${process.pid}.tmp`;
+    await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await rename(temporary, path);
   }
 
   return {
@@ -78,10 +92,7 @@ export function createFileStore(directory: string): Store {
       }
     },
     async writeState(state) {
-      await ensureDirectory();
-      const temporary = `${statePath}.${process.pid}.tmp`;
-      await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-      await rename(temporary, statePath);
+      await replace(statePath, state);
     },
     async appendHistory(entry) {
       await ensureDirectory();
@@ -114,6 +125,17 @@ export function createFileStore(directory: string): Store {
         // No log yet.
       }
       await appendFile(logPath, `${line}\n`, "utf8");
+    },
+    async readNotes() {
+      try {
+        const parsed = releaseNotesSchema.safeParse(JSON.parse(await readFile(notesPath, "utf8")));
+        return parsed.success ? parsed.data : null;
+      } catch {
+        return null;
+      }
+    },
+    async writeNotes(notes) {
+      await replace(notesPath, notes);
     },
   };
 }
