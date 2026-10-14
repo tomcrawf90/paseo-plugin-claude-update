@@ -398,4 +398,28 @@ describe("release notes", () => {
     expect(h.store.state.lastOutcome).toBe("update-available");
     expect((await s.status()).releaseNotes).toMatchObject({ from: "2.1.290", to: "2.1.292" });
   });
+
+  it("are not reported for another range than the one the state points at", async () => {
+    const h = harness("2.1.292");
+    h.pointers["CHANGELOG.md"] = CHANGELOG;
+    const s = start(h);
+    await s.tick();
+    expect((await s.status()).releaseNotes).toMatchObject({ from: null, to: "2.1.292" });
+    h.store.state = { ...h.store.state, installedVersion: "2.1.290", targetVersion: "2.1.290" };
+    expect((await s.status()).releaseNotes).toBeNull();
+  });
+
+  it("are not written by a service that was stopped while reading them", async () => {
+    const h = harness("2.1.292");
+    let answer: (text: string) => void = () => {};
+    const fetchText = h.deps.fetchText;
+    h.deps.fetchText = (url) => (url === SOURCE ? new Promise((resolve) => (answer = resolve)) : fetchText(url));
+    const s = start(h);
+    const ticked = s.tick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    s.stop();
+    answer(CHANGELOG);
+    await ticked;
+    expect(h.store.notes).toBeNull();
+  });
 });

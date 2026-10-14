@@ -157,6 +157,7 @@ plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it 
 | Linux, Windows | Untested. The process list and notifications are macOS only by design. |
 | Homebrew, WinGet, npm installs of Claude Code | Not supported; `claude update` is for the native installer. |
 | An update cut short by a plugin reload or daemon stop | Not tested. The CLI is assumed to leave the old version in place. |
+| The "Full release notes" button | Uses `openExternalUrl` from `@getpaseo/plugin/client`, which the Paseo 0.11.2 app gives plugins (read from its bundle). Not checked on 0.10.3; the card guards it with `typeof` and always shows the address to copy. The card has not been seen in the app. |
 | Whether Paseo's "refresh" of an agent starts a new `claude` process | Unknown, so no "restart this agent" action is offered. |
 
 ## When Claude Code changes

@@ -1,5 +1,6 @@
 import { CHANGELOG_SOURCE_URL, parseChangelog, selectNotes, type NotesRange, type ReleaseNotes } from "../shared/notes";
 import { compareVersions } from "../shared/version";
+import type { HistoryEntry } from "../shared/status";
 import type { FetchText } from "./claude";
 import type { State } from "./store";
 
@@ -8,26 +9,35 @@ export const NOTES_RETRY_MS = 60 * 60_000;
 
 /**
  * Whose notes the status page shows: an update that is waiting (what
- * "Update now" would bring), else the last update, else the installed
- * version alone. Null before the first check.
+ * "Update now" would bring), else the last update this plugin made, while it
+ * is still the installed version, else the installed version alone. Null
+ * before the first check. `history` is newest first.
  */
-export function notesRange(state: State): NotesRange | null {
+export function notesRange(state: State, history: readonly HistoryEntry[]): NotesRange | null {
   const installed = state.installedVersion;
   if (installed === null) return null;
   if (state.targetVersion !== null && compareVersions(state.targetVersion, installed) > 0) {
     return { from: installed, to: state.targetVersion };
   }
-  if (state.previousVersion !== null && compareVersions(state.previousVersion, installed) < 0) {
-    return { from: state.previousVersion, to: installed };
+  // Claude Code can also update itself from a terminal; then the last update here is not what is installed.
+  const last = history.find((entry) => entry.outcome === "updated" || entry.outcome === "pin-applied");
+  if (last?.from != null && last.to === installed && compareVersions(last.from, installed) < 0) {
+    return { from: last.from, to: installed };
   }
   return { from: null, to: installed };
 }
 
+/** The notes when they are for `range`, else null: notes for another range are not shown. */
+export function notesFor(notes: ReleaseNotes | null, range: NotesRange | null): ReleaseNotes | null {
+  return notes !== null && range !== null && notes.from === range.from && notes.to === range.to ? notes : null;
+}
+
 /** True when the notes on disk are for another range, or could not be read and the wait is over. */
 export function notesWanted(notes: ReleaseNotes | null, range: NotesRange, now: number): boolean {
-  if (notes === null || notes.from !== range.from || notes.to !== range.to) return true;
-  if (notes.error === null) return false;
-  const fetched = Date.parse(notes.fetchedAt);
+  const current = notesFor(notes, range);
+  if (current === null) return true;
+  if (current.error === null) return false;
+  const fetched = Date.parse(current.fetchedAt);
   return Number.isNaN(fetched) || now - fetched >= NOTES_RETRY_MS;
 }
 

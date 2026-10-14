@@ -2,7 +2,7 @@ import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 
 import { autoUpdateOn, type UpdateSettings } from "../shared/settings";
 import type { Activity, ClaudeProcess, Status } from "../shared/status";
-import { notesRange, notesWanted, readReleaseNotes } from "./notes";
+import { notesFor, notesRange, notesWanted, readReleaseNotes } from "./notes";
 import { listClaudeProcesses, staleProcesses } from "./processes";
 import type { State } from "./store";
 import { isDue, nextCheckAt, runCheck, type Trigger, type UpdaterDependencies } from "./updater";
@@ -77,10 +77,12 @@ export function startService(
    */
   function refreshNotes(): Promise<void> {
     notesRefresh ??= (async () => {
-      const range = notesRange(await deps.store.readState());
+      const range = notesRange(await deps.store.readState(), await deps.store.readHistory(HISTORY_SHOWN));
       if (range === null || stopped) return;
       if (!notesWanted(await deps.store.readNotes(), range, deps.now().getTime())) return;
-      await deps.store.writeNotes(await readReleaseNotes(deps.fetchText, range, deps.now()));
+      const notes = await readReleaseNotes(deps.fetchText, range, deps.now());
+      // Stopped while reading: a reloaded plugin has its own service, which writes its own.
+      if (!stopped) await deps.store.writeNotes(notes);
     })()
       .catch((error: unknown) => console.error("[claude-update] release notes could not be stored:", error))
       .finally(() => {
@@ -189,7 +191,7 @@ export function startService(
         staleProcesses: stale,
         processListSupported: listed.supported,
         history,
-        releaseNotes: notes,
+        releaseNotes: notesFor(notes, notesRange(state, history)),
         dataDirectory: deps.store.directory,
       };
     },

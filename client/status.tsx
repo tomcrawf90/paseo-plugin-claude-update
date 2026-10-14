@@ -207,7 +207,7 @@ function ReleaseNotesCard({
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Release notes</Text>
       {notes === null ? (
-        <Text style={styles.muted}>Not read yet. They are read about a minute after a check.</Text>
+        <Text style={styles.muted}>Not read yet. They are read right after a check.</Text>
       ) : (
         <>
           <Text style={styles.muted}>{notesSummary(notes, installed)}</Text>

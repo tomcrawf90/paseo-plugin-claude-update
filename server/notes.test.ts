@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CHANGELOG_SOURCE_URL, type ReleaseNotes } from "../shared/notes";
+import type { HistoryEntry } from "../shared/status";
 import { EMPTY_STATE } from "./store";
 import { NOTES_RETRY_MS, notesRange, notesWanted, readReleaseNotes } from "./notes";
 
@@ -15,25 +16,38 @@ const notes = (patch: Partial<ReleaseNotes> = {}): ReleaseNotes => ({
   ...patch,
 });
 
+const update = (from: string, to: string, outcome: HistoryEntry["outcome"] = "updated"): HistoryEntry => ({
+  at: "2026-10-14T09:00:00.000Z",
+  trigger: "schedule",
+  outcome,
+  from,
+  to,
+  target: to,
+  message: `Updated Claude Code from ${from} to ${to}.`,
+});
+const installed = (version: string) => ({ ...EMPTY_STATE, installedVersion: version, targetVersion: version });
+
 describe("notesRange", () => {
   it("is nothing before the first check", () => {
-    expect(notesRange(EMPTY_STATE)).toBeNull();
+    expect(notesRange(EMPTY_STATE, [])).toBeNull();
   });
 
   it("is the update that is waiting, first", () => {
-    const state = { ...EMPTY_STATE, installedVersion: "2.1.292", targetVersion: "2.1.300", previousVersion: "2.1.285" };
-    expect(notesRange(state)).toEqual({ from: "2.1.292", to: "2.1.300" });
+    const state = { ...EMPTY_STATE, installedVersion: "2.1.292", targetVersion: "2.1.300" };
+    expect(notesRange(state, [update("2.1.285", "2.1.292")])).toEqual({ from: "2.1.292", to: "2.1.300" });
   });
 
   it("is the last update when nothing is waiting", () => {
-    const state = { ...EMPTY_STATE, installedVersion: "2.1.300", targetVersion: "2.1.300", previousVersion: "2.1.292" };
-    expect(notesRange(state)).toEqual({ from: "2.1.292", to: "2.1.300" });
+    const history = [update("2.1.292", "2.1.300"), update("2.1.285", "2.1.292")];
+    expect(notesRange(installed("2.1.300"), history)).toEqual({ from: "2.1.292", to: "2.1.300" });
   });
 
-  it("is the installed version alone with no update behind it, or after a move back to an older one", () => {
-    expect(notesRange({ ...EMPTY_STATE, installedVersion: "2.1.300", targetVersion: "2.1.300" })).toEqual({ from: null, to: "2.1.300" });
-    const rolledBack = { ...EMPTY_STATE, installedVersion: "2.1.285", targetVersion: "2.1.285", previousVersion: "2.1.292" };
-    expect(notesRange(rolledBack)).toEqual({ from: null, to: "2.1.285" });
+  it("is the installed version alone when the last update here is not what is installed", () => {
+    // Claude Code updated itself from a terminal after the plugin's update.
+    expect(notesRange(installed("2.1.295"), [update("2.1.285", "2.1.292")])).toEqual({ from: null, to: "2.1.295" });
+    // A pin moved it back to an older version.
+    expect(notesRange(installed("2.1.285"), [update("2.1.292", "2.1.285", "pin-applied")])).toEqual({ from: null, to: "2.1.285" });
+    expect(notesRange(installed("2.1.300"), [])).toEqual({ from: null, to: "2.1.300" });
   });
 });
 

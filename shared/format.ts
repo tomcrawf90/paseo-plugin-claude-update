@@ -115,7 +115,12 @@ export function notesSummary(notes: ReleaseNotes, installed: string | null): str
   if (installed !== null && compareVersions(notes.to, installed) > 0) {
     return `What ${notes.to} brings over the installed ${notes.from ?? installed}. It is not installed yet.`;
   }
-  if (notes.from === null) return `Claude Code ${notes.to}, the installed version.`;
+  if (notes.from === null) {
+    const shown = notes.versions[0]?.version;
+    // Some versions are released with no entry in the changelog.
+    if (shown !== undefined && shown !== notes.to) return `The changelog has no entry for ${notes.to}, the installed version; this is ${shown}, the one before it.`;
+    return `Claude Code ${notes.to}, the installed version.`;
+  }
   return `What the last update, ${notes.from} → ${notes.to}, brought.`;
 }
 

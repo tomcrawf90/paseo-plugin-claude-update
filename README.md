@@ -71,14 +71,14 @@ never changes the row: it is on the status page and in its history, with a macOS
 an older version are listed on the status page and nowhere else.
 
 **Release notes.** The "Release notes" card on the status page shows what changed: for an update
-that is waiting, the versions it would bring; otherwise the versions the last update brought (or the
-installed version alone, before any update). The newest three versions are shown, each with its
+that is waiting, the versions it would bring; otherwise the versions the plugin's last update brought (or the
+installed version alone, before any update or after Claude Code updated itself). The newest three versions are shown, each with its
 first 12 changes, and the rest are counted. "Full release notes" opens
 [the Claude Code changelog](https://code.claude.com/docs/en/changelog), which has every release; its
 address is on the card as well, to copy. The notes come from the changelog Anthropic publishes in
 [the claude-code repository](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md). They are
-read about a minute after a check finds a new version, never as part of the check, so they cannot
-hold up or change an update. If they cannot be read, the card says why, keeps the link, and tries
+read right after a check, never as part of it, so they cannot hold up or change an update, and read
+again only when the versions to show change. If they cannot be read, the card says why, keeps the link, and tries
 again an hour later.
 
 **Auto-update Claude Code.** On: the next scheduled check installs a new version by itself, with
@@ -121,7 +121,7 @@ there yourself and choose `stable` here. The plugin never edits Claude Code's fi
 | A bad release | Roll back (below), or turn auto-update off, use the `stable` channel, or a pin. |
 | Failures | One attempt per check, no retry inside a check. After a failure the wait doubles (4 h, 8 h, 16 h, then 24 h at the default interval). An update that was tried and did not go in is told at once (and again if it makes three failures in a row); a check that fails before that (no network, say) is told once, at the third failure in a row. |
 | Overlap | One check at a time. The CLI's installer also takes its own lock. |
-| Network | Two reads, nothing sent: the release channel's pointer (`downloads.claude.ai`), and the Claude Code changelog on GitHub (`raw.githubusercontent.com`) once per new version, for the release notes. |
+| Network | Two reads, nothing sent: the release channel's pointer (`downloads.claude.ai`), and the Claude Code changelog on GitHub (`raw.githubusercontent.com`) for the release notes: when the versions to show change, and hourly while a read fails. |
 | Your environment | To find which agent a process belongs to it reads process environments on the host, takes only `PASEO_AGENT_ID` from them, and stores and logs nothing else. |
 
 ## Rolling back
