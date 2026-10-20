@@ -133,10 +133,10 @@ that tag is what publishes. [RELEASING.md](RELEASING.md) has every step; in shor
 Never run `npm publish` by hand, never move or reuse a tag, and never put a token in the repository.
 
 If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plugin.json`, the
-`@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3 <0.13.0 || >=0.11.0-beta.1 <0.13.0`: 0.10.3 is the
-oldest version the plugin has been typechecked and run against, and the second half is there because a
-plain `>=0.10.3` may not match an 0.11 beta. (Paseo 0.11.4 and 0.12.0 also test the version without its
-prerelease part, so for them it would; 0.10.3's check was not read.) The `<0.13.0` bound was raised on
+`@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3 <0.13.0 || >=0.11.0-beta.1 <0.13.0 || >=0.12.0-beta.1 <0.13.0`: 0.10.3 is the
+oldest version the plugin has been typechecked and run against, and the other two halves are there because
+under strict semver a plain `>=0.10.3` does not match an 0.11 or 0.12 beta. (Paseo 0.11.4 and 0.12.0
+also test the version without its prerelease part, so for them it would; 0.10.3's check was not read.) The `<0.13.0` bound was raised on
 2026-10-20 after the plugin ran in throwaway 0.11.4 and 0.12.0 daemons (look, update, release notes;
 the 0.12.0 status page and settings screen in its own web UI) and typechecked against
 `@getpaseo/plugin` 0.12.0, whose types are the same as 0.11.4's. Raise it again once it has run on 0.13.

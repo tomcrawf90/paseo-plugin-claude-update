@@ -4,7 +4,7 @@ The GitHub repository exists and is public: <https://github.com/tomcrawf90/paseo
 Nothing else here has been done: no release tag, no npm package, no registry entry. Every step
 below is the owner's decision. How a version is released is in [RELEASING.md](RELEASING.md).
 
-Sources, read 2026-10-07: <https://paseo.cafe/submit>, the registry repository
+Sources, read 2026-10-07 and again 2026-10-20 (form, schema and scanner rules unchanged apart from the manifest keys below): <https://paseo.cafe/submit>, the registry repository
 <https://github.com/paseo-cafe/paseo-cafe> (README, `.github/ISSUE_TEMPLATE/plugin-submission.yml`,
 `src/lib/registry-schema.ts`, `.github/security/semgrep.yml`, `scripts/plugin-security/static-scan.ts`),
 the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.sh/docs/plugins/publishing.md>.
@@ -17,7 +17,7 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | 2 | npm package name | `paseo-plugin-claude-update` (unscoped) | Free on npm on 2026-10-07. Alternative: a scope, e.g. `@tomcrawf90/paseo-claude-update` (138 of 231 listed plugins are scoped). Change `name` in `package.json` and the install line in `README.md` if you choose another. |
 | 3 | GitHub repository | `tomcrawf90/paseo-plugin-claude-update`, public. Decided: it exists | Paseo Cafe needs a public GitHub repository. `package.json` (`homepage`, `repository`, `bugs`) points at it, and npm provenance checks that it does. |
 | 4 | Licence and author | MIT, "Tom Crawford" | In `LICENSE` and `package.json`. 216 of 231 listed plugins are MIT. |
-| 5 | Supported Paseo versions | `>=0.10.3 <0.13.0 \|\| >=0.11.0-beta.1 <0.13.0` | Typechecked and run against 0.10.3; run in throwaway 0.11.4 and 0.12.0 daemons on 2026-10-20, and typechecked against `@getpaseo/plugin` 0.12.0. The second half lets 0.11 betas load it, which a plain `>=0.10.3` might not (a prerelease only matches a range that names one). 0.13 needs a new release. Lowering the minimum needs a test on the older version. |
+| 5 | Supported Paseo versions | `>=0.10.3 <0.13.0 \|\| >=0.11.0-beta.1 <0.13.0 \|\| >=0.12.0-beta.1 <0.13.0` | Typechecked and run against 0.10.3; run in throwaway 0.11.4 and 0.12.0 daemons on 2026-10-20, and typechecked against `@getpaseo/plugin` 0.12.0. The other halves let 0.11 and 0.12 betas load it, which a plain `>=0.10.3` does not under strict semver (a prerelease only matches a range that names one). 0.13 needs a new release. Lowering the minimum needs a test on the older version. |
 | 6 | First-run behaviour | Auto-update off: a fresh install reports an available update and changes nothing until the user turns on "Auto-update Claude Code" | Installing a plugin should not change the host's CLI unasked. The alternative is to default to installing (`mode` in `shared/settings.ts`). |
 
 ## 2. Before publishing
@@ -26,7 +26,7 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | --- | --- | --- |
 | Install it in your own Paseo and use it | `paseo plugin install /absolute/path/to/paseo-plugin-claude-update` (your checkout), then `paseo plugin ls` | no |
 | Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the "Checks" card with the last and next check, the spinner on "Check now" and "Update now", the result line, the auto-update switch), settings screen (its "Checks" section and "Check now"), the sidebar row ("Claude Code updates", on one line) reading "Claude update ready" while an update waits with auto-update off, and going back when it is dismissed or installed or after an update | no |
-| Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have been seen in the app's web bundle in a browser (2026-10-08), not in the desktop window or on a phone. | no |
+| Capture screenshots into `images/` | Optional for Paseo Cafe ("none are required to get in"; 206 of 246 listings have images on 2026-10-20). PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every file in that folder, then images linked from the README, at most 8 in all. None exist yet: the screens have been seen in the app's web bundle in a browser (2026-10-08), not in the desktop window or on a phone. | no |
 | Set the release date | `npm run release:prepare -- 0.2.1` on a release branch dates the `CHANGELOG.md` entry (RELEASING.md) | no |
 | Verify | `npm run verify` and `npm pack --dry-run` | passes on 2026-10-07 |
 
@@ -87,10 +87,10 @@ Reads process environments on the host to match processes to agents; only the Pa
 | Version | The published npm version, which must match `package.json` in the repository | `0.2.1` |
 | Install notes | The `## Install` section of `README.md`, quoted as written | Written |
 | Limitations | The `## Limitations` section of `README.md`, plus the caveats above | Written |
-| Screenshots | Every image in `images/` | **Missing**: see step 2 |
+| Screenshots | Every file in `images/`, then images linked from `README.md` (from GitHub hosts only), at most 8 | **Missing**, optional: see step 2 |
 | Demo video | A YouTube or Loom link in `README.md` | None; optional |
 | Health badges | Valid manifest, README, LICENSE, a `test` script, a `typecheck` script, recent activity | All present |
-| Icon | Not used. The scanner rejects the manifest keys `name`, `icon` and `media` that Paseo 0.11 added | Nothing to do |
+| Icon | Not used. Since 2026-10-15 the scanner accepts the manifest keys `name`, `icon` and `media` only when every branch of `requirements.paseo` requires Paseo 0.11.0 or later, which ours does not | Nothing to do |
 
 ## 6. Rules the scanner enforces
 
@@ -100,10 +100,10 @@ Reads process environments on the host to match processes to agents; only the Pa
 | --- | --- |
 | `paseo-plugin.json` holds only `id`, `requirements`, `build` and `description`; any other key fails | Met |
 | `id` is lowercase kebab-case and equals the registry filename | Met |
-| `requirements.paseo` is a valid range for 0.8 or later | Met (`>=0.10.3 <0.13.0 \|\| >=0.11.0-beta.1 <0.13.0`; every branch's minimum is above 0.9.0-beta.1, so `description` is allowed) |
+| `requirements.paseo` is a valid range for 0.8 or later | Met (`>=0.10.3 <0.13.0 \|\| >=0.11.0-beta.1 <0.13.0 \|\| >=0.12.0-beta.1 <0.13.0`; every branch's minimum is above 0.9.0-beta.1, so `description` is allowed) |
 | No source file (`.ts`, `.tsx`, `.js`, `.jsx`), comments and tests included, contains the text of a synchronous process call, a shell `-c` invocation, or a command-line download tool | Met. The plugin starts processes with `execFile` only |
 | Imports stay inside `client/`, `server/`, `shared/`; no Node modules in client or shared code | Met |
-| No symlinks; at most 200 files and 2 MB | Met (57 files, 0.5 MB) |
+| No symlinks; at most 200 files and 2 MB | Met (64 files, 0.5 MB) |
 | The npm tarball passes the same scan | Not run: the real scanner runs only after submission |
 
 ## 7. After it is listed
@@ -118,5 +118,4 @@ keeps the released version between releases.
 
 - Whether the real scanner passes: it runs on submission. The local pre-check covers its published rules only.
 - How long review takes, and whether a human reviews beyond the automated checks. The site says listings are not reviewed or vouched for.
-- Whether Paseo Cafe will accept `name`, `icon` and `media` in the manifest later. Its scanner rejected them on 2026-10-07.
-- The official Paseo registry (<https://github.com/getpaseo/plugins>, `paseo plugin add owner/slug`) is a separate listing with its own rules, including a required `OVERVIEW.md` in the repository and in the npm package (so in `files`). It was not prepared here. Its ownership rule accepts a package with npm provenance from anyone, which the release workflow provides.
+- The official Paseo registry (<https://github.com/getpaseo/plugins>, published at <https://plugins.paseo.sh>, installed with `paseo plugin add owner/slug` since Paseo 0.11) is a separate listing with its own rules, and it was not prepared here. On 2026-10-20 it listed 321 plugins against Paseo Cafe's 246; Paseo's publishing guide (<https://paseo.sh/docs/plugins/publishing.md>, rewritten 2026-10-15) names only it, and the Paseo Cafe browsing plugin reads its directory since 1.0.0. Submission is the form at <https://github.com/getpaseo/plugins/issues/new?template=submit-plugin.yml>, with the npm package as the source; a reviewer approves it. Its REVIEW.md asks plugins with a visual interface for at least one image (PNG, JPG, WebP or GIF), given in the manifest's `media` (which needs Paseo 0.11 or later) or as image addresses in the submission. Listing there is a separate decision for the owner.
