@@ -34,7 +34,7 @@ only lists them.
 
 ## Install
 
-Requires Paseo 0.10.3 or 0.11 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
+Requires Paseo 0.10.3, 0.11 or 0.12 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
 installed with its native installer on the daemon host.
 
 ```bash
@@ -162,8 +162,8 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 
 Not verified at the time of writing (0.2.1): how the status page, settings screen and sidebar row
 look in the Paseo desktop window or on a phone (they were seen in the app's own web bundle in a browser, against a throwaway daemon), and
-whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in a real Paseo
-0.10.3 daemon against a throwaway copy of the CLI.
+whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in real Paseo
+0.10.3, 0.11.4 and 0.12.0 daemons against a throwaway copy of the CLI.
 
 ## Development
 

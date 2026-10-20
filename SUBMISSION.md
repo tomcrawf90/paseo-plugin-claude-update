@@ -17,7 +17,7 @@ the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.s
 | 2 | npm package name | `paseo-plugin-claude-update` (unscoped) | Free on npm on 2026-10-07. Alternative: a scope, e.g. `@tomcrawf90/paseo-claude-update` (138 of 231 listed plugins are scoped). Change `name` in `package.json` and the install line in `README.md` if you choose another. |
 | 3 | GitHub repository | `tomcrawf90/paseo-plugin-claude-update`, public. Decided: it exists | Paseo Cafe needs a public GitHub repository. `package.json` (`homepage`, `repository`, `bugs`) points at it, and npm provenance checks that it does. |
 | 4 | Licence and author | MIT, "Tom Crawford" | In `LICENSE` and `package.json`. 216 of 231 listed plugins are MIT. |
-| 5 | Supported Paseo versions | `>=0.10.3 <0.12.0 \|\| >=0.11.0-beta.1 <0.12.0` | Typechecked and run against 0.10.3 only. The second half lets 0.11 betas load it, which a plain `>=0.10.3` does not (a prerelease only matches a range that names one). Untested on 0.11; 0.12 needs a new release. Lowering the minimum needs a test on the older version. |
+| 5 | Supported Paseo versions | `>=0.10.3 <0.13.0 \|\| >=0.11.0-beta.1 <0.13.0` | Typechecked and run against 0.10.3; run in throwaway 0.11.4 and 0.12.0 daemons on 2026-10-20, and typechecked against `@getpaseo/plugin` 0.12.0. The second half lets 0.11 betas load it, which a plain `>=0.10.3` might not (a prerelease only matches a range that names one). 0.13 needs a new release. Lowering the minimum needs a test on the older version. |
 | 6 | First-run behaviour | Auto-update off: a fresh install reports an available update and changes nothing until the user turns on "Auto-update Claude Code" | Installing a plugin should not change the host's CLI unasked. The alternative is to default to installing (`mode` in `shared/settings.ts`). |
 
 ## 2. Before publishing
@@ -100,7 +100,7 @@ Reads process environments on the host to match processes to agents; only the Pa
 | --- | --- |
 | `paseo-plugin.json` holds only `id`, `requirements`, `build` and `description`; any other key fails | Met |
 | `id` is lowercase kebab-case and equals the registry filename | Met |
-| `requirements.paseo` is a valid range for 0.8 or later | Met (`>=0.10.3 <0.12.0 \|\| >=0.11.0-beta.1 <0.12.0`; every branch's minimum is above 0.9.0-beta.1, so `description` is allowed) |
+| `requirements.paseo` is a valid range for 0.8 or later | Met (`>=0.10.3 <0.13.0 \|\| >=0.11.0-beta.1 <0.13.0`; every branch's minimum is above 0.9.0-beta.1, so `description` is allowed) |
 | No source file (`.ts`, `.tsx`, `.js`, `.jsx`), comments and tests included, contains the text of a synchronous process call, a shell `-c` invocation, or a command-line download tool | Met. The plugin starts processes with `execFile` only |
 | Imports stay inside `client/`, `server/`, `shared/`; no Node modules in client or shared code | Met |
 | No symlinks; at most 200 files and 2 MB | Met (57 files, 0.5 MB) |
