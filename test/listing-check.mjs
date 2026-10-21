@@ -104,7 +104,7 @@ if (Object.keys(packageJson.dependencies ?? {}).length > 0) problems.push("packa
 
 // OVERVIEW.md is the official listing's page. It ships in the package and,
 // as its reviewers ask, names no install command.
-const installWords = [["paseo plugin", " add"], ["npm", " install"]].map((parts) => parts.join(""));
+const installWords = [["paseo plugin", " add"], ["paseo plugin", " install"], ["npm", ":paseo-plugin"], ["npm", " install"]].map((parts) => parts.join(""));
 if (!existsSync(join(root, "OVERVIEW.md"))) {
   problems.push("OVERVIEW.md is missing");
 } else {

@@ -105,7 +105,7 @@ prefilled issue in paseo-cafe/paseo-cafe; a bot turns it into a pull request tha
 | Plugin subpath | leave empty | The repository is the plugin. |
 | npm package | `paseo-plugin-claude-update` | |
 | Categories | `automation`, `monitoring` | Allowed: automation, browser, code-review, git, github, monitoring, orchestration, productivity, provider, theme, other. |
-| Platforms | `macos` | Only macOS has been tested. |
+| Platforms | leave empty | The form asks for platforms only when a plugin works on nothing else. Updating works wherever Claude Code's native installer does; only the process list and notifications are macOS only, which the third caveat says. |
 | Caveats | the six lines below | One per line, up to 6, each one sentence of at most 140 characters. |
 | Confirmation 1 | tick | "`paseo-plugin.json.id` in my repo matches the registry filename". True. |
 | Confirmation 2 | tick | "The npm package is public, contains the same plugin ID, and has a released semantic version rather than `0.0.0`". True once 0.2.1 is on npm. |

@@ -19,19 +19,31 @@ import { copyPlugin, installPaseo, patchHostName, removeQuietly, repoRoot, start
 
 const { values } = parseArgs({ options: { paseo: { type: "string", default: "0.12.0" }, keep: { type: "boolean", default: false } } });
 const chromePath = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const DEMO_HOST = "Demo Mac";
 const WIDTH = 1440;
 const HEIGHT = 900;
 const SCALE = 2;
 
-async function computerName() {
-  if (process.platform !== "darwin") return null;
-  const { stdout } = await promisify(execFile)("/usr/sbin/scutil", ["--get", "ComputerName"]).catch(() => ({ stdout: "" }));
-  return stdout.trim() || null;
-}
+const output = async (file, args) => (await promisify(execFile)(file, args).catch(() => ({ stdout: "" }))).stdout.trim() || null;
+const macName = (kind) => (process.platform === "darwin" ? output("/usr/sbin/scutil", ["--get", kind]) : null);
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Whole words, so that a short user name does not match inside "custom".
-const forbidden = [hostname(), await computerName(), userInfo().username, "/Users/", "/tmp/", "/private/", tmpdir()]
-  .filter((text) => text && text.length > 2)
+const forbidden = [
+  hostname(),
+  hostname().split(".")[0],
+  await macName("ComputerName"),
+  await macName("LocalHostName"),
+  userInfo().username,
+  await output("git", ["config", "user.name"]),
+  await output("git", ["config", "user.email"]),
+  "/Users/",
+  "/home/",
+  "/tmp/",
+  "/private/",
+  tmpdir(),
+]
+  // A generic short name such as "Mac" is part of the dummy one and says nothing.
+  .filter((text) => text && text.length > 2 && !DEMO_HOST.includes(text))
   .map((text) => ({ text, pattern: new RegExp(/^\w/.test(text) ? `\\b${escape(text)}\\b` : escape(text), "i") }));
 
 const work = await mkdtemp(join(tmpdir(), "claude-update-shots-"));
@@ -40,10 +52,17 @@ const out = join(repoRoot, "images");
 let daemon;
 let browser;
 try {
+  // The plugin compares against the live release pointer, so the stand-in CLI
+  // starts three versions behind it and updates to it: the pictures agree
+  // with each other whatever the pointer says on the day.
+  const latest = (await (await fetch("https://downloads.claude.ai/claude-code-releases/latest")).text()).trim();
+  const [major, minor, patch] = latest.split(".").map(Number);
+  if (![major, minor, patch].every(Number.isInteger) || patch < 3) throw new Error(`unexpected release pointer: ${latest}`);
+  const installed = `${major}.${minor}.${patch - 3}`;
   const version = await installPaseo(values.paseo, prefix);
-  await patchHostName(prefix, "Demo Mac");
+  await patchHostName(prefix, DEMO_HOST);
   await copyPlugin(join(work, "plugin"));
-  daemon = await startDaemon({ prefix, work, pluginDir: join(work, "plugin"), claude: { version: "2.1.303", latest: "2.1.306" }, fakeProcesses: true, webUi: true });
+  daemon = await startDaemon({ prefix, work, pluginDir: join(work, "plugin"), claude: { version: installed, latest }, fakeProcesses: true, webUi: true });
   console.log(`Paseo ${version} at http://${daemon.host}/`);
   await daemon.rpc("status.check", { apply: false });
 
@@ -70,6 +89,11 @@ try {
         const box = node.parentElement?.getBoundingClientRect();
         if (box && box.bottom > 0 && box.top < window.innerHeight && box.right > 0 && box.left < window.innerWidth) parts.push(node.textContent);
       }
+      // Form fields hold their text outside the text nodes.
+      for (const field of document.querySelectorAll("input, textarea")) {
+        const box = field.getBoundingClientRect();
+        if (box.bottom > 0 && box.top < window.innerHeight) parts.push(field.value, field.placeholder);
+      }
       return parts.join("\n");
     });
   const shoot = async (name) => {
@@ -88,7 +112,7 @@ try {
   await shoot("01-status-update-ready.png");
 
   await click(/^Install a Claude Code update now/);
-  await waitForText("2.1.303 → 2.1.306");
+  await waitForText(`${installed} → ${latest}`);
   // Paseo's bar above the page keeps the title the row had when the page was
   // opened, so open it again from the row, which now reads as usual.
   await click(/^Claude Code updates$/);
@@ -129,8 +153,8 @@ try {
   for (const name of ["01-status-update-ready.png", "02-status-after-update.png", "03-settings.png"]) await copyFile(join(work, name), join(out, name));
   console.log(`saved to ${out}`);
 } finally {
-  await browser?.close();
-  await daemon?.stop();
+  await browser?.close().catch(() => undefined);
+  await daemon?.stop().catch(() => undefined);
   if (values.keep) console.log(`kept ${work}`);
   else await removeQuietly(work);
 }

@@ -56,7 +56,7 @@ export async function copyPlugin(target, range) {
   const packageJson = JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8"));
   await mkdir(target, { recursive: true });
   for (const entry of [...packageJson.files.filter((name) => !name.startsWith("!")), "package.json"]) {
-    await cp(join(repoRoot, entry), join(target, entry), { recursive: true });
+    await cp(join(repoRoot, entry), join(target, entry), { recursive: true, filter: (source) => !source.endsWith(".test.ts") });
   }
   if (range !== undefined) {
     const manifest = JSON.parse(await readFile(join(target, "paseo-plugin.json"), "utf8"));
@@ -94,11 +94,20 @@ export async function startDaemon({ prefix, work, pluginDir, claude = { version:
   const paseoBin = join(prefix, "node_modules", ".bin", "paseo");
   const path = [fakeProcesses ? join(repoRoot, "test", "stub", "fake-ps") : null, join(process.execPath, ".."), "/usr/bin", "/bin", "/usr/sbin", "/sbin"].filter(Boolean).join(":");
   const env = { HOME: home, PATH: path, USER: "demo", STUB_CLAUDE_DIR: stubDir, TZ: process.env.TZ ?? "UTC" };
+  // The made-up processes run the version the stand-in CLI starts on.
+  if (fakeProcesses) env.FAKE_PS_VERSION = claude.version;
   const log = await open(join(work, "daemon.log"), "w");
   const child = spawn(paseoBin, ["daemon", "run", "--home", paseoHome], { env, stdio: ["ignore", log.fd, log.fd] });
   let exited = null;
-  child.on("exit", (code) => {
-    exited = code;
+  const gone = new Promise((resolve) => {
+    child.on("exit", (code, signal) => {
+      exited = code ?? signal;
+      resolve();
+    });
+    child.on("error", (error) => {
+      exited = error.message;
+      resolve();
+    });
   });
 
   const paseo = async (...args) => (await run(paseoBin, ["--host", host, ...args], { env, maxBuffer: 16 * 1024 * 1024 })).stdout;
@@ -107,6 +116,9 @@ export async function startDaemon({ prefix, work, pluginDir, claude = { version:
   const stop = async () => {
     await run(paseoBin, ["daemon", "stop", "--home", paseoHome], { env }).catch(() => undefined);
     if (exited === null) child.kill("SIGTERM");
+    const killed = setTimeout(() => child.kill("SIGKILL"), 10_000);
+    await gone;
+    clearTimeout(killed);
     await log.close().catch(() => undefined);
   };
 
@@ -120,8 +132,9 @@ export async function startDaemon({ prefix, work, pluginDir, claude = { version:
     await paseo("plugin", "install", pluginDir);
     let plugin;
     for (let waited = 0; ; waited += 1000) {
-      plugin = (await plugins()).find((entry) => entry.id === "claude-update" || entry.name === "claude-update");
-      if (plugin && /running/.test(JSON.stringify(plugin))) break;
+      plugin = (await plugins()).find((entry) => entry.id === "claude-update");
+      if (plugin?.status === "running") break;
+      if (plugin?.status === "error") throw new Error(`the plugin failed to start: ${plugin.error}\n${await daemonLog()}`);
       if (waited > 60_000) throw new Error(`the plugin did not start: ${JSON.stringify(plugin)}\n${await daemonLog()}`);
       await sleep(1000);
     }
@@ -145,7 +158,7 @@ export async function startDaemon({ prefix, work, pluginDir, claude = { version:
     try {
       return await client.invokePluginRpc("claude-update", method, input);
     } finally {
-      await client.close?.();
+      await client.close();
     }
   };
 
