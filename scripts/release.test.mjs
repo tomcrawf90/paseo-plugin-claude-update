@@ -35,7 +35,7 @@ describe("parseChangelog", () => {
   });
 
   it("refuses a heading it does not know", () => {
-    expect(() => parseChangelog("## [0.2.1] 2026-10-08\n")).toThrow(/line 1/);
+    expect(() => parseChangelog("## [0.2.1] 2026-10-08\n")).toThrow(/line 1: expected .*"## x\.y\.z - not published" or "## Unreleased"/);
   });
 });
 
