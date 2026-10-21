@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { harness, ok, settingsWith } from "../test/support";
 import { sidebarRow } from "../shared/format";
 import type { UpdateSettings } from "../shared/settings";
-import { startService, type Service } from "./service";
+import { settingsReader, startService, type Service, type SettingsState } from "./service";
 
 const HOUR = 60 * 60_000;
 /** Timers far enough out that only explicit `tick()` calls drive these tests. */
@@ -210,7 +210,7 @@ describe("the schedule", () => {
   it("reports nothing running after a check that could not start", async () => {
     const h = harness("2.1.285", "2.1.292");
     const s = start(h, null);
-    await expect(s.check("manual", true)).rejects.toThrow(/settings are invalid/);
+    await expect(s.check("manual", true)).rejects.toThrow(/settings could not be read/);
     expect((await s.status()).activity).toBeNull();
     expect((await s.status()).checking).toBe(false);
   });
@@ -285,9 +285,9 @@ describe("a manual check", () => {
     expect(h.claude.installed).toBe("2.1.285");
   });
 
-  it("refuses with invalid settings", async () => {
+  it("refuses with invalid settings, in words that fit whatever the settings screen offers", async () => {
     const h = harness("2.1.285", "2.1.292");
-    await expect(start(h, null).check("manual", false)).rejects.toThrow(/settings are invalid/);
+    await expect(start(h, null).check("manual", false)).rejects.toThrow(/settings could not be read/);
   });
 });
 
@@ -474,5 +474,29 @@ describe("release notes", () => {
     answer(CHANGELOG);
     await ticked;
     expect(h.store.notes).toBeNull();
+  });
+});
+
+describe("reading the settings", () => {
+  it("logs why they are invalid once for each reason, not at every read", async () => {
+    const lines: string[] = [];
+    let current: SettingsState = { status: "invalid", error: "bad interval" };
+    const read = settingsReader(async () => current, (line) => lines.push(line));
+    expect(await read()).toBeNull();
+    expect(await read()).toBeNull();
+    expect(lines).toEqual(["[claude-update] settings are invalid, so nothing is checked: bad interval"]);
+    current = { status: "invalid", error: "bad channel" };
+    await read();
+    await read();
+    expect(lines).toHaveLength(2);
+    current = { status: "ready", values: settingsWith() };
+    expect(await read()).toEqual(settingsWith());
+    current = { status: "invalid", error: "bad interval" };
+    await read();
+    expect(lines).toEqual([
+      "[claude-update] settings are invalid, so nothing is checked: bad interval",
+      "[claude-update] settings are invalid, so nothing is checked: bad channel",
+      "[claude-update] settings are invalid, so nothing is checked: bad interval",
+    ]);
   });
 });

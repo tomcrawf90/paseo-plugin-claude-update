@@ -34,6 +34,30 @@ export interface Service {
 }
 
 const HISTORY_SHOWN = 20;
+const SETTINGS_UNREADABLE = "The plugin settings could not be read, so nothing was checked. Open the plugin's settings to see why.";
+
+export type SettingsState = { status: "ready"; values: UpdateSettings } | { status: "invalid"; error: string };
+
+/**
+ * The settings, or null while they are invalid. Every status read asks, so
+ * the reason is logged when it changes rather than at every read.
+ */
+export function settingsReader(
+  read: () => Promise<SettingsState>,
+  log: (line: string) => void = (line) => console.error(line),
+): () => Promise<UpdateSettings | null> {
+  let logged: string | null = null;
+  return async () => {
+    const current = await read();
+    if (current.status === "ready") {
+      logged = null;
+      return current.values;
+    }
+    if (current.error !== logged) log(`[claude-update] settings are invalid, so nothing is checked: ${current.error}`);
+    logged = current.error;
+    return null;
+  };
+}
 
 /** Paseo's titles for agents, by id. Best effort: the list is only decoration. */
 async function agentTitles(paseo: PaseoApi | undefined): Promise<Map<string, string>> {
@@ -159,7 +183,7 @@ export function startService(
         activity ??= { phase: "checking", trigger, startedAt: deps.now().toISOString() };
         try {
           const settings = await readSettings();
-          if (settings === null) throw new Error("The plugin settings are invalid; reset them in Settings.");
+          if (settings === null) throw new Error(SETTINGS_UNREADABLE);
           if (running !== null) continue;
           const state = await start(settings, trigger, apply);
           // Not awaited: the answer to "Check now" or "Update now" does not wait for the notes.

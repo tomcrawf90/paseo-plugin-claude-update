@@ -110,7 +110,7 @@ describe("the calls the app makes", () => {
   it("status.check with settings that cannot be read is refused, and nothing is left running", async () => {
     const h = harness("2.1.292", "2.1.292");
     const app = rpcs(h, null);
-    await expect(app.call("status.check")).rejects.toThrow(/settings are invalid/);
+    await expect(app.call("status.check")).rejects.toThrow(/settings could not be read/);
     expect(await app.call("status.get")).toMatchObject({ checking: false, lastCheckAt: null });
   });
 

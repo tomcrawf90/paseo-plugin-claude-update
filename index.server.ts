@@ -9,7 +9,7 @@ import { createNotifier } from "./server/notify";
 import { dataDirectory } from "./server/paths";
 import { listClaudeProcesses, staleProcesses } from "./server/processes";
 import { runCommand } from "./server/run";
-import { startService } from "./server/service";
+import { settingsReader, startService } from "./server/service";
 import { createFileStore } from "./server/store";
 import type { UpdaterDependencies } from "./server/updater";
 import { updateSettings } from "./shared/settings";
@@ -64,12 +64,7 @@ export default function contribute(server: PluginServerContext) {
     },
   };
 
-  const service = startService(deps, async () => {
-    const current = await settings.read();
-    if (current.status === "ready") return current.values;
-    console.error(`[claude-update] settings are invalid, so nothing is checked: ${current.error}`);
-    return null;
-  });
+  const service = startService(deps, settingsReader(() => settings.read()));
 
   handleRpcs(server, service);
 
