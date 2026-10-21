@@ -126,6 +126,31 @@ describe("the schedule", () => {
     expect((await s.status()).checking).toBe(false);
   });
 
+  it("installs once when \"Update now\" is pressed twice during a look", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    let release: () => void = () => {};
+    const looking = new Promise<void>((reached) => {
+      h.claude.on["--version"] = () =>
+        new Promise((resolve) => {
+          reached();
+          release = () => {
+            delete h.claude.on["--version"];
+            resolve(ok("2.1.285 (Claude Code)\n"));
+          };
+        });
+    });
+    const s = start(h, settingsWith({ mode: "notify" }), { minimumGapMs: 0 });
+    const tick = s.tick();
+    await looking;
+    const first = s.check("manual", true);
+    const second = s.check("manual", true);
+    release();
+    const [, one, two] = await Promise.all([tick, first, second]);
+    expect(h.claude.calls).toEqual(["--version", "--version", "update", "--version"]);
+    expect([one.lastOutcome, two.lastOutcome]).toEqual(["updated", "updated"]);
+    expect(h.store.history.map((entry) => entry.trigger)).toEqual(["schedule", "manual"]);
+  });
+
   it("does not install from a service stopped while \"Update now\" waited for a look", async () => {
     const h = harness("2.1.285", "2.1.292");
     let release: () => void = () => {};
