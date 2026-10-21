@@ -545,9 +545,22 @@ describe("channel", () => {
     const first = await runCheck(h.deps, settings, "schedule");
     await runCheck(h.deps, settings, "schedule");
     expect(first.lastOutcome).toBe("channel-mismatch");
+    expect(first.lastMessage).toContain("Claude Code's own channel is latest");
     expect(first.lastMessage).toContain('"autoUpdatesChannel": "stable"');
     expect(h.claude.calls).toEqual(["--version", "--version"]);
     expect(h.notifications).toHaveLength(1);
+  });
+
+  it("says plainly when Claude Code's settings cannot be read", async () => {
+    const h = harness("2.1.280", "2.1.292");
+    h.files["/home/u/.claude/settings.json"] = "{ not json";
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.lastOutcome).toBe("channel-mismatch");
+    expect(state.claudeChannel).toBeNull();
+    expect(state.lastMessage).toBe(
+      'Claude Code 2.1.292 is available on the latest channel. ~/.claude/settings.json could not be read, so Claude Code\'s own channel, which is what "claude update" follows, is unknown. Nothing was changed. Set "autoUpdatesChannel": "latest" in ~/.claude/settings.json, or change this plugin\'s channel.',
+    );
+    expect(h.claude.calls).toEqual(["--version"]);
   });
 
   it("updates on stable when Claude Code is on stable too", async () => {

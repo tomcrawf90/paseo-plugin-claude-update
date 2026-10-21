@@ -15,7 +15,9 @@ import {
   nextCheckText,
   notesSummary,
   OUTCOME_LABELS,
+  outcomeTone,
   relativeTime,
+  staleProcessesText,
 } from "../shared/format";
 import { RELEASE_NOTES_URL, type ReleaseNotes } from "../shared/notes";
 import {
@@ -96,23 +98,15 @@ function Row({ styles, label, children }: { styles: Styles; label: string; child
   );
 }
 
-function outcomeColor(theme: PluginTheme, status: Status): string {
-  if (status.lastOutcome === "failed") return theme.colors.statusDanger;
-  if (status.lastOutcome === "updated" || status.lastOutcome === "up-to-date" || status.lastOutcome === "pinned") {
-    return theme.colors.statusSuccess;
-  }
-  return theme.colors.statusWarning;
+function toneColor(theme: PluginTheme, tone: RunResult["tone"]): string {
+  if (tone === "bad") return theme.colors.statusDanger;
+  return tone === "good" ? theme.colors.statusSuccess : theme.colors.statusWarning;
 }
 
 function processLabel(process: ClaudeProcess): string {
   if (process.kind === "agent") return process.title ?? `Agent ${process.agentId ?? ""}`.trim();
   if (process.kind === "daemon") return "Claude Code background daemon";
   return "Other Claude Code process";
-}
-
-function resultColor(theme: PluginTheme, result: RunResult): string {
-  if (result.tone === "bad") return theme.colors.statusDanger;
-  return result.tone === "good" ? theme.colors.statusSuccess : theme.colors.statusWarning;
 }
 
 /**
@@ -176,7 +170,10 @@ function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles 
       ) : null}
       {ready && settings.values.pinnedVersion !== "" ? (
         <Text style={{ color: theme.colors.statusWarning, fontSize: 13 }}>
-          Pinned at {settings.values.pinnedVersion} in this plugin's settings: that version is held, and newer ones are not installed.
+          Pinned at {settings.values.pinnedVersion} in this plugin's settings, so newer versions are not installed.{" "}
+          {on && settings.values.enabled
+            ? "If another version is installed, the next scheduled check moves to the pinned one."
+            : "If another version is installed, the next check tells you, and Update now moves to the pinned one."}
         </Text>
       ) : null}
       <Text style={styles.muted}>{AUTO_UPDATE_SAFETY}</Text>
@@ -284,6 +281,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
 
   const data = check.data;
   const last = lastResult(data);
+  const staleText = staleProcessesText(data);
   const lastUpdate = lastUpdateText(data, now);
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -314,7 +312,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
         </Row>
         <View style={styles.row}>
           <Text style={styles.label}>Last result</Text>
-          <Text style={[styles.value, { color: outcomeColor(theme, data) }]}>{last.label}</Text>
+          <Text style={[styles.value, { color: toneColor(theme, outcomeTone(data.lastOutcome)) }]}>{last.label}</Text>
         </View>
         {line !== null ? (
           <View style={styles.progress} accessibilityLiveRegion="polite">
@@ -322,7 +320,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
             <Text style={styles.value}>{line}</Text>
           </View>
         ) : result !== null ? (
-          <Text style={[styles.value, { color: resultColor(theme, result) }]} accessibilityLiveRegion="polite">
+          <Text style={[styles.value, { color: toneColor(theme, result.tone) }]} accessibilityLiveRegion="polite">
             Finished {relativeTime(new Date(result.at).toISOString(), now)}: {result.message}
           </Text>
         ) : last.detail !== null ? (
@@ -382,8 +380,8 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Roll back</Text>
           <Text style={styles.muted}>
-            The last update replaced {data.previousVersion}. To return to it, pin it in this plugin's settings, or run this
-            in a terminal (and pin it, or the next check updates again):
+            The last update replaced {data.previousVersion}. To return to it, pin it in this plugin's settings and press Update
+            now, or run this in a terminal{data.autoInstall ? " (and pin it, or the next scheduled check updates again)" : ""}:
           </Text>
           <Text selectable style={styles.code}>
             {data.rollbackCommand}
@@ -393,10 +391,8 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Still on an older version</Text>
-        {!data.processListSupported ? (
-          <Text style={styles.muted}>Listing running Claude Code processes is only supported on macOS.</Text>
-        ) : data.staleProcesses.length === 0 ? (
-          <Text style={styles.muted}>Every running Claude Code process is on the installed version.</Text>
+        {staleText !== null ? (
+          <Text style={styles.muted}>{staleText}</Text>
         ) : (
           <>
             <Text style={styles.muted}>

@@ -1,4 +1,4 @@
-import { elapsed } from "../shared/format";
+import { elapsed, outcomeTone } from "../shared/format";
 import type { Outcome, Status } from "../shared/status";
 
 /** The two buttons: "Check now" only looks, "Update now" installs. */
@@ -62,8 +62,7 @@ export interface RunResult {
 
 export function resultOf(status: Pick<Status, "lastOutcome" | "lastMessage">, at: number): RunResult {
   const outcome = status.lastOutcome;
-  const tone = outcome === "failed" ? "bad" : outcome === "up-to-date" || outcome === "updated" || outcome === "pinned" || outcome === "pin-applied" ? "good" : "news";
-  return { outcome, message: status.lastMessage ?? "Checked.", tone, at };
+  return { outcome, message: status.lastMessage ?? "Checked.", tone: outcomeTone(outcome), at };
 }
 
 /**

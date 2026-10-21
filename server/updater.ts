@@ -329,10 +329,14 @@ export async function runCheck(
   // say so and leave the install alone.
   if (known.claudeChannel !== settings.channel) {
     const theirs = known.claudeChannel ?? "unreadable";
+    const why =
+      known.claudeChannel === null
+        ? `~/.claude/settings.json could not be read, so Claude Code's own channel, which is what "claude update" follows, is unknown.`
+        : `Claude Code's own channel is ${theirs}, which is what "claude update" follows.`;
     return notable(
       "channel-mismatch",
       "channel-mismatch",
-      `Claude Code ${target} is available on the ${settings.channel} channel, but Claude Code's own channel is ${theirs}, which is what "claude update" follows. Nothing was changed. Set "autoUpdatesChannel": "${settings.channel}" in ~/.claude/settings.json, or change this plugin's channel.`,
+      `Claude Code ${target} is available on the ${settings.channel} channel. ${why} Nothing was changed. Set "autoUpdatesChannel": "${settings.channel}" in ~/.claude/settings.json, or change this plugin's channel.`,
       {},
       { from: installed, to: null, key: `channel:${settings.channel}:${theirs}:${target}` },
     );

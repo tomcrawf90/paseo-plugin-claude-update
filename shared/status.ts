@@ -80,7 +80,8 @@ export const statusSchema = z.object({
   history: z.array(historyEntrySchema),
   /**
    * Release notes for the update that is waiting, else the last update, else
-   * the installed version. Null until they have been asked for once.
+   * the installed version. Null until they have been read once, and while the
+   * notes on disk are for other versions than the ones to show.
    */
   releaseNotes: releaseNotesSchema.nullable(),
   dataDirectory: z.string(),
