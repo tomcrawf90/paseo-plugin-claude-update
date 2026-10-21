@@ -36,7 +36,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run lint:cafe
+      - run: npm run lint:listings
       # package.json and the top CHANGELOG.md entry have to name the same version.
       - run: npm run check:release
       - run: npm pack --dry-run
