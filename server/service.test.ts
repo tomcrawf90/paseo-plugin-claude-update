@@ -126,6 +126,27 @@ describe("the schedule", () => {
     expect((await s.status()).checking).toBe(false);
   });
 
+  it("does not install from a service stopped while \"Update now\" waited for a look", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    let release: () => void = () => {};
+    const looking = new Promise<void>((reached) => {
+      h.claude.on["--version"] = () =>
+        new Promise((resolve) => {
+          reached();
+          release = () => resolve(ok("2.1.285 (Claude Code)\n"));
+        });
+    });
+    const s = start(h, settingsWith({ mode: "notify" }), { minimumGapMs: 0 });
+    const tick = s.tick();
+    await looking;
+    const update = s.check("manual", true);
+    s.stop();
+    release();
+    await tick;
+    await expect(update).rejects.toThrow(/restarted/);
+    expect(h.claude.calls).toEqual(["--version"]);
+  });
+
   it("joins a running install when \"Update now\" is pressed, and a look joins whatever is running", async () => {
     const h = harness("2.1.285", "2.1.292");
     let release: () => void = () => {};

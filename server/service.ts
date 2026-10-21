@@ -178,6 +178,8 @@ export function startService(
           if (!apply || runningInstalls) return running;
           // "Update now" during a look: joining it would install nothing.
           await running.catch(() => undefined);
+          // Stopped while waiting: a reloaded plugin has its own service, which must be the one to install.
+          if (stopped) throw new Error("The plugin was restarted before the update could start; try again.");
           continue;
         }
         activity ??= { phase: "checking", trigger, startedAt: deps.now().toISOString() };
