@@ -59,7 +59,13 @@ export default function contribute(client: PluginClientContext) {
     async onSelect({ rpc, openSurface }) {
       // The page that opens shows the check running and then its result.
       openSurface(SURFACE_ID);
-      publishStatus(await rpc(checkNow, { apply: false }));
+      try {
+        publishStatus(await rpc(checkNow, { apply: false }));
+      } catch (error) {
+        // A Command Center item has no toast; the page is open and shows
+        // what the host reports, and the reason goes to the app's log.
+        console.warn("[claude-update] the check could not be run:", error);
+      }
     },
   });
   client.addCommandCenterItem({
