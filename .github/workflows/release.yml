@@ -45,7 +45,7 @@ jobs:
         run: node scripts/release.mjs check --tag "$GITHUB_REF_NAME"
       - name: Require the version to be new on npm
         run: node scripts/release.mjs unpublished
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run verify
       - run: npm pack --dry-run
       - name: Pack

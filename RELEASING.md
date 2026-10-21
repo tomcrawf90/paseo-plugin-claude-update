@@ -110,13 +110,14 @@ Trigger: a pushed tag of the form `vX.Y.Z` (three numbers; a prerelease tag does
 | Verify and pack | The tagged commit is on `main` | The tag was made on another branch |
 | | `node scripts/release.mjs check --tag vX.Y.Z` | The tag is not `v` + the `package.json` version, the top changelog entry is another version, it is still `unreleased`, it is empty, or `## Unreleased` still holds changes |
 | | `node scripts/release.mjs unpublished` | npm already has this version, or the registry did not give a clear answer |
-| | `npm ci`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the listing pre-check or packing fails |
+| | `npm ci --ignore-scripts`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the listing pre-check or packing fails |
 | Publish to npm | npm is 11.5.1 or newer; the version is still not on npm | A second run for the same version |
 | | `npm publish <the packed tarball> --access public --provenance` | npm accepts neither the trusted publisher nor a token. The job fails with an error that says so; it never skips |
 | GitHub release | `gh release create vX.Y.Z <tarball>` with the changelog entry and the install line as notes | The release cannot be created. An existing release is left alone |
 
 The tarball attached to the GitHub release is the file that was published, packed once in the first
-job. The publish job installs no dependencies and runs no package script. It is the only job with
+job, after an install that runs no dependency's install script, so none can change what is packed.
+The publish job installs no dependencies and runs no package script. It is the only job with
 `id-token: write`; only the last job has `contents: write`.
 
 A version cannot be published twice: the workflow checks the registry before publishing, releases
