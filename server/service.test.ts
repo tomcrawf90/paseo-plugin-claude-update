@@ -97,6 +97,59 @@ describe("the schedule", () => {
     expect((await s.status()).checking).toBe(false);
   });
 
+  it("installs when \"Update now\" is pressed during a look, after the look has ended", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    let release: () => void = () => {};
+    const looking = new Promise<void>((reached) => {
+      h.claude.on["--version"] = () =>
+        new Promise((resolve) => {
+          reached();
+          release = () => {
+            delete h.claude.on["--version"];
+            resolve(ok("2.1.285 (Claude Code)\n"));
+          };
+        });
+    });
+    const s = start(h, settingsWith({ mode: "notify" }), { minimumGapMs: 0 });
+    const tick = s.tick();
+    await looking;
+    const update = s.check("manual", true);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Still one check at a time: nothing more has run while the look is going.
+    expect(h.claude.calls).toEqual(["--version"]);
+    release();
+    const [, state] = await Promise.all([tick, update]);
+    expect(h.claude.calls).toEqual(["--version", "--version", "update", "--version"]);
+    expect(state.lastOutcome).toBe("updated");
+    expect(h.claude.installed).toBe("2.1.292");
+    expect(h.store.history.map((entry) => entry.trigger)).toEqual(["schedule", "manual"]);
+    expect((await s.status()).checking).toBe(false);
+  });
+
+  it("joins a running install when \"Update now\" is pressed, and a look joins whatever is running", async () => {
+    const h = harness("2.1.285", "2.1.292");
+    let release: () => void = () => {};
+    const updating = new Promise<void>((reached) => {
+      h.claude.on.update = () =>
+        new Promise((resolve) => {
+          reached();
+          release = () => {
+            h.claude.installed = "2.1.292";
+            resolve(ok("Successfully updated"));
+          };
+        });
+    });
+    const s = start(h, settingsWith({ mode: "notify" }));
+    const first = s.check("manual", true);
+    await updating;
+    const second = s.check("manual", true);
+    const look = s.check("manual", false);
+    release();
+    const states = await Promise.all([first, second, look]);
+    expect(h.claude.calls).toEqual(["--version", "update", "--version"]);
+    expect(states.map((state) => state.lastOutcome)).toEqual(["updated", "updated", "updated"]);
+  });
+
   it("reports a scheduled install as running, since when, and when it reaches the updater", async () => {
     const h = harness("2.1.285", "2.1.292");
     let release: () => void = () => {};

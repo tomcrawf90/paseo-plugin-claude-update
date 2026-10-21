@@ -22,7 +22,11 @@ export interface ServiceOptions {
 export interface Service {
   /** One scheduler tick; resolves when any check it started, and any release notes it asked for, have finished. */
   tick(): Promise<void>;
-  /** Checks now. Joins a check already running instead of starting a second one. */
+  /**
+   * Checks now. Joins a check already running instead of starting a second
+   * one, except that an install asked for while a look runs waits for the
+   * look to end and then installs.
+   */
   check(trigger: Trigger, apply: boolean): Promise<State>;
   status(paseo?: PaseoApi): Promise<Status>;
   dismiss(): Promise<void>;
@@ -63,6 +67,8 @@ export function startService(
   const minimumGapMs = options.minimumGapMs ?? 15 * 60_000;
   const platform = options.platform ?? process.platform;
   let running: Promise<State> | null = null;
+  // Whether the running check may install, so that "Update now" knows if joining it is enough.
+  let runningInstalls = false;
   // What the status reports as running. Set as soon as a check is asked for,
   // before its settings are read, so a status read right behind it sees it.
   let activity: Activity | null = null;
@@ -107,9 +113,11 @@ export function startService(
     };
     const check = runCheck(deps, settings, trigger, options).finally(() => {
       running = null;
+      runningInstalls = false;
       activity = null;
     });
     running = check;
+    runningInstalls = apply || (trigger === "schedule" && autoUpdateOn(settings));
     return check;
   }
 
@@ -141,19 +149,26 @@ export function startService(
   return {
     tick,
     async check(trigger, apply) {
-      if (running !== null) return running;
-      activity ??= { phase: "checking", trigger, startedAt: deps.now().toISOString() };
-      try {
-        const settings = await readSettings();
-        if (settings === null) throw new Error("The plugin settings are invalid; reset them in Settings.");
-        if (running !== null) return running;
-        const state = await start(settings, trigger, apply);
-        // Not awaited: the answer to "Check now" or "Update now" does not wait for the notes.
-        void refreshNotes();
-        return state;
-      } finally {
-        // Nothing started (the settings could not be read): nothing is running.
-        if (running === null) activity = null;
+      for (;;) {
+        if (running !== null) {
+          if (!apply || runningInstalls) return running;
+          // "Update now" during a look: joining it would install nothing.
+          await running.catch(() => undefined);
+          continue;
+        }
+        activity ??= { phase: "checking", trigger, startedAt: deps.now().toISOString() };
+        try {
+          const settings = await readSettings();
+          if (settings === null) throw new Error("The plugin settings are invalid; reset them in Settings.");
+          if (running !== null) continue;
+          const state = await start(settings, trigger, apply);
+          // Not awaited: the answer to "Check now" or "Update now" does not wait for the notes.
+          void refreshNotes();
+          return state;
+        } finally {
+          // Nothing started (the settings could not be read): nothing is running.
+          if (running === null) activity = null;
+        }
       }
     },
     async status(paseo) {
