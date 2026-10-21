@@ -12,7 +12,9 @@ installer's marker against the old npm updater. See `README.md` for what users a
 
 | Path | Holds |
 | --- | --- |
-| `paseo-plugin.json` | Manifest: `id`, `description`, `requirements.paseo`. Paseo Cafe rejects any other key. |
+| `paseo-plugin.json` | Manifest: `id`, `description`, `requirements.paseo`. Paseo Cafe rejects any other key while the minimum is below 0.11, and Paseo 0.10 refuses `name`, `icon` and `media`. The description is the same sentence as `package.json`'s. |
+| `OVERVIEW.md` | The official Paseo directory's page for the plugin, shipped in the package: what it installs, runs, reads and sends. No install commands in it. |
+| `images/` | The listing screenshots, made by `npm run screenshots`. Paseo Cafe shows every file here, so nothing but images; each is shown in the README. |
 | `index.server.ts` | Daemon entry: wires real dependencies (process runner, fetch, files, clock) into the service and registers settings and RPCs. |
 | `server/updater.ts` | One check, start to finish (`runCheck`), plus the schedule arithmetic (`isDue`, `backoffMs`). All the decisions are here. |
 | `server/service.ts` | The timer, the one-check-at-a-time guard, and the status the UI reads. |
@@ -24,8 +26,9 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `shared/` | Settings schema, RPC contracts, version and display helpers. No Node or React imports. |
 | `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. Three modules hold logic apart from React Native so it can be tested: `client/sidebar.ts` (adding, changing and removing the row, one change at a time), `client/activity.ts` (what the buttons and the progress line say) and `client/bus.ts` (passes each status read to the sidebar row). `client/check.ts` is the hook both screens use for the status and the two buttons. What the "Checks" lines say (last check, last result, last update, next check) is in `shared/format.ts`. `test/client-entry.test.ts` runs the entry against a pretend app. |
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
-| `test/cafe-scan.mjs` | Local copy of the Paseo Cafe scanner's rules. |
-| `docs/listing-preview.html`, `SUBMISSION.md` | Listing preview and the Paseo Cafe submission checklist. |
+| `test/listing-check.mjs` | Local copy of both listings' rules that can be checked here (`npm run lint:listings`). |
+| `SUBMISSION.md` | What each listing needs and the exact submission for each. |
+| `scripts/daemon.mjs`, `scripts/screenshots.mjs`, `test/stub/fake-ps/` | A throwaway daemon of any Paseo version with the plugin installed and the stand-in CLI; the screenshot run on top of it (Paseo's web app in headless Chrome, a made-up process list, the host name "Demo Mac"). Not published, never run in CI. |
 | `scripts/release.mjs` | The release checks (`check`, `unpublished`, `notes`) and the version bump (`prepare`). Plain Node, no dependencies; `scripts/release.test.mjs` tests it. Not published. |
 | `.github/workflows/ci.yml` | Verify on Linux and macOS with Node 22 and 24, lint the workflows, and one `CI passed` check for branch protection. |
 | `.github/workflows/release.yml` | Runs on a pushed tag `vX.Y.Z`: verify, publish to npm, GitHub release. npm names this file as the trusted publisher, so do not rename it. |
@@ -40,7 +43,8 @@ Code lives only in `client/`, `server/`, `shared/` and the two entries; a module
 npm install
 npm run typecheck
 npm test            # vitest; uses test/stub/claude, no network, no real install
-npm run lint:cafe   # Paseo Cafe pre-check
+npm run lint:listings   # official directory and Paseo Cafe pre-check
+npm run screenshots     # retake images/ (macOS, Chrome; starts its own throwaway daemon)
 npm run check:release   # package.json and the top CHANGELOG.md entry name the same version
 npm run verify      # all four
 npm pack --dry-run  # exactly what would be published
@@ -74,6 +78,9 @@ binary. On macOS, wrap commands in `sandbox-exec -f profile.sb` with a profile t
 2026-10-07 run `ps` failed to start with EPERM under such a profile, cause not confirmed, so the
 process list read as unsupported there).
 
+`scripts/daemon.mjs` does all of this with the stand-in CLI in a temporary directory (`installPaseo`,
+`copyPlugin`, `startDaemon`); the steps by hand, with a copied real CLI, follow.
+
 To run the plugin itself, use a second daemon with its own home and port, never the live one:
 
 ```bash
@@ -98,7 +105,7 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 | --- | --- |
 | Where settings live | `$PASEO_HOME/plugin-settings/claude-update/update.json`, as `{"version": 1, "values": {…}}`. It is read from disk on every read, and `paseo plugin install` leaves an existing file alone (`remove` deletes it), so writing it before installing fixes the mode before the first check. |
 | A directory install runs in place | Paseo loads the plugin from the directory it was installed from. Edits to that checkout reach the running plugin at its next reload. |
-| Calling an RPC without the app | `DaemonClient` in `@getpaseo/client` (`dist/daemon-client.js`, an internal module) has `invokePluginRpc(pluginId, method, input)`. Connect to `ws://127.0.0.1:<port>/ws` with any non-empty `clientId`, then call `status.get`, or `status.check` with `{ "apply": false }` to look without installing. |
+| Calling an RPC without the app | `DaemonClient` in `@getpaseo/client` (the export `@getpaseo/client/internal/daemon-client`, in 0.10.3 and 0.12.0; `scripts/daemon.mjs` loads it from the same install as the daemon) has `invokePluginRpc(pluginId, method, input)`. Connect to `ws://127.0.0.1:<port>/ws` with any non-empty `clientId`, then call `status.get`, or `status.check` with `{ "apply": false }` to look without installing. |
 
 ## Conventions
 
@@ -107,7 +114,8 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 - No credentials in code, tests, logs or commits. `ps -E` output contains every process's environment: take `PASEO_AGENT_ID` from it and nothing else, and never log or store the raw text.
 - The install changes only through `claude update` and `claude install <version>`. Never download a release, write under `~/.local/share/claude`, relink `~/.local/bin/claude`, or read-modify-write `~/.claude.json` or `~/.claude/settings.json` (the latter is read, never written). That rule is about this plugin's code. The CLI's own installer does write there: `claude install <version>` (pin and rollback) rewrites `installMethod`, `autoUpdates` and `autoUpdatesProtectedForNative` in `~/.claude.json`, so never describe the plugin as leaving that file untouched.
 - Never restart, stop or message an agent. The plugin lists old processes and stops there.
-- Start processes with `execFile` only. The Paseo Cafe scanner fails any source file, comments and tests included, that contains the text of a synchronous process call, a shell `-c`, or a command-line download tool; `npm run lint:cafe` checks this.
+- Start processes with `execFile` (or `spawn`) only. An older Paseo Cafe rule, still in its repository though no workflow there ran it on 2026-10-21, fails any source file, comments and tests included, that contains the text of a synchronous process call, a shell `-c`, or a command-line download tool; `npm run lint:listings` keeps every source file clear of it.
+- Screenshots hold made-up data only: no host name, user name, real path, workspace or agent. `scripts/screenshots.mjs` refuses to save a picture whose visible text names this machine, the user or a local path.
 - A fresh install has "Auto-update Claude Code" off. Only two things install: the schedule with that switch on, and "Update now" (`apply: true`). "Check now" (`apply: false`) must stay look-only either way.
 - The switch is stored as `mode` (`notify` off, `auto` on) under settings version 1, as 0.1.0 stored its two-way choice. Do not rename the key or raise the version for it: an installed plugin's settings file must keep reading as the choice it held, without being rewritten.
 - The sidebar row is always there and opens the status page: it is the way in, and without it the owner could not find "Check now" or the last check (2026-10-08; 0.2.0 and the first 0.2.1 had no row while there was nothing to do). While there is no news it reads `QUIET_ROW` ("Claude Code updates"), which says nothing about the state and so never changes. `sidebarRow` in `shared/format.ts` is the one rule for when the title names news instead: an update that will not install itself (`autoInstall` in the status is false), a failure, a mismatch. An update that went in never changes the row or raises a toast, and the rule is not given the process list, so old processes cannot change it; they are on the status page only. A title is at most `SIDEBAR_TITLE_MAX` (20) characters, so that it stays on one line; the detail goes on the status page. No row title and no toast may say "up to date" or give a time: that is for the status page and the settings screen.
@@ -125,17 +133,22 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 that tag is what publishes. [RELEASING.md](RELEASING.md) has every step; in short:
 
 1. Between releases, a change a user would notice gets a line under `## Unreleased` at the top of `CHANGELOG.md`, and `package.json` keeps the version that is on npm.
-2. On a release branch: `npm run release:prepare -- <patch|minor|major>` (or an exact version) bumps `package.json` and `package-lock.json` and dates the changelog entry. Semantic versioning; Paseo Cafe detects updates by this number, so never reuse one.
+2. On a release branch: `npm run release:prepare -- <patch|minor|major>` (or an exact version) bumps `package.json` and `package-lock.json` and dates the changelog entry. Semantic versioning; both listings detect updates by this number, so never reuse one.
 3. `npm run verify` and `npm pack --dry-run`, commit, pull request, merge.
 4. Tag `main` (`git tag -a v<version> -m <version>`) and push the tag. `.github/workflows/release.yml` checks the tag against `package.json` and the changelog, verifies, publishes to npm and creates the GitHub release. Tagging, and so publishing, is the owner's decision: an agent prepares the release pull request and stops.
-5. Submitting to Paseo Cafe is the owner's decision too; every form field is in [SUBMISSION.md](SUBMISSION.md). After the first listing, a new npm version is picked up without a new submission.
+5. Submitting to the official Paseo directory and to Paseo Cafe is the owner's decision too; every field is in [SUBMISSION.md](SUBMISSION.md). After the first listing, a new npm version is picked up by both without a new submission.
 
 Never run `npm publish` by hand, never move or reuse a tag, and never put a token in the repository.
 
 If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plugin.json`, the
-`@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3 <0.12.0 || >=0.11.0-beta.1 <0.12.0`: 0.10.3 is the
-only version the plugin has been typechecked and run against, and the second half is there because a
-plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it has run on 0.12.
+`@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3 <0.13.0`: 0.10.3 is the
+oldest version the plugin has been typechecked and run against. No separate prerelease branch is needed:
+Paseo (`assertPluginCompatibility` in `packages/protocol/src/plugin-requirements.ts`, the same in 0.10.3
+and 0.12.0) accepts a version when either it or its `major.minor.patch` satisfies the range, so
+`0.12.0-beta.1` passes as `0.12.0`. The app runs the same check before it loads a plugin's client code. The `<0.13.0` bound was raised on
+2026-10-20 after the plugin ran in throwaway 0.11.4 and 0.12.0 daemons (look, update, release notes;
+the 0.12.0 status page and settings screen in its own web UI) and typechecked against
+`@getpaseo/plugin` 0.12.0, whose types are the same as 0.11.4's. Raise it again once it has run on 0.13.
 
 ## Known limits and unverified points
 
@@ -145,6 +158,7 @@ plain `>=0.10.3` does not match an 0.11 beta. Raise the `<0.12.0` bound once it 
 | `claude install <version>` with no terminal | Verified the same way (used for a pin and as the rollback). |
 | Status page, settings screen, sidebar row in the app | 0.1.0 was used in the app by its owner on 2026-10-07 (an update through "Update now" worked). The 0.2.0 sidebar row was seen in the app by its owner the same day ("Claude Code updated · 6 on an old version", wrapped onto two lines), which is why 0.2.1 has no row after an update and keeps titles to 20 characters. The 0.2.1 screens as they were on 2026-10-07 were not seen in the app (for 2026-10-08 see the next row): they were drawn outside it with react-native-web from the bundle a 0.10.3 daemon built, and the entry was run against a pretend app. |
 | The always-present row, the "Checks" card and the settings "Checks" section | Seen 2026-10-08 in the Paseo 0.10.3 app's own web bundle (served from `Paseo.app/Contents/Resources/app-dist` on a local port and opened in a browser, not the desktop window), connected to a throwaway 0.10.3 daemon with the stub CLI. The row read "Claude update ready" with an update waiting and auto-update off, and "Claude Code updates" after "Update now" and a dismissal; "Check now" worked from the status page and from the settings screen; a failed check showed its reason; the narrow layout stacked. To repeat it, the daemon needs the page's origin in `daemon.cors.allowedOrigins` of its `config.json`. Paseo's bar above the page keeps the title the row had when the page was opened until the page is opened again. Not seen in the desktop app or on a phone. |
+| Paseo 0.11.4 and 0.12.0 | Checked 2026-10-20 in throwaway daemons of each (`@getpaseo/cli` from npm, its own home and port, a copied CLI 2.1.302): the plugin loaded, a look reported 2.1.304 and installed nothing, "Update now" installed it, and the release notes were read. On 0.12.0 the status page (with "Check now") and the settings screen ("Checks" section) worked in the web UI that daemon serves itself: `"features": {"webUi": {"enabled": true}}` in its `config.json` serves it on the daemon's port, with no CORS setting. Writing `config.json` after an install drops the install (it is recorded there). The process list read as unsupported under `sandbox-exec`, as before. Not seen in the 0.12 desktop app. |
 | The row after an update (0.2.1) | The row is now always there (see Conventions), so read "registered no row" below as "the row keeps its plain title". Checked 2026-10-07 in a throwaway 0.10.3 daemon with the stub CLI: after a scheduled update `status.get` reported `updated` with two processes on another version, and the client entry, given that answer by a pretend app, registered no row. A look with auto-update off gave "Claude update ready", and a failed "Update now" gave "Claude update failed", which a following look left in place. Not seen in the app's own sidebar, so that the titles stay on one line there is taken from their length (20 characters at most, against the 33 that fitted on the first line of the 0.2.0 row in the owner's screenshot), not seen. |
 | Adding and removing the sidebar row at runtime | Read from the Paseo 0.10.3 app bundle, not from documentation: the function `addSidebarItem` returns takes the item out of the list, frees its id and tells the app to redraw, at any time; a plugin may register no row at start. Paseo 0.11 documents runtime add and remove for its newer `addSidebarHeaderItem`/`addSidebarFooterItem` and calls `addSidebarItem` deprecated, so move to those when 0.10 support is dropped. |
 | `useRpc` and the query client on the settings screen | The "Checks" section of the settings screen uses `useRpc` and `useQuery`. Read from the Paseo 0.10.3 app bundle: a settings screen is wrapped in the same `PluginRuntimeBoundary` as a surface (RPC provider, the plugin's one query client), so both screens share the cached status. The spinner and the "Finished" line belong to the screen that was pressed; the other screen shows the result at its next read (30 s at most). |

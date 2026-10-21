@@ -7,7 +7,7 @@ changelog disagrees with it, and the release workflow fails when the tag does.
 
 Pushing the tag is the release. `.github/workflows/release.yml` does the rest.
 
-State on 2026-10-07: nothing is published, no tag exists and the release workflow has never run.
+State on 2026-10-20: nothing is published, no tag exists and the release workflow has never run.
 0.2.1 is the first version to release.
 
 ## Once, around the first two releases
@@ -20,7 +20,7 @@ registry". So the first release is published with a token and the later ones wit
 | # | When | Step | Where | Detail |
 | --- | --- | --- | --- | --- |
 | 1 | Before 0.2.1 | Have an npm account with two-factor authentication | <https://www.npmjs.com/signup> | The package name `paseo-plugin-claude-update` was free on 2026-10-07. |
-| 2 | Before 0.2.1 | Create a granular access token | npmjs.com → your avatar → Access Tokens → Generate New Token | Expiration: as short as covers the first release (the default is 7 days). Tick "Bypass two-factor authentication". Packages and scopes: "Read and write (publish and stage)", not the stage-only choice, for all packages (the package does not exist yet, so it probably cannot be picked by name). Organizations: no access. |
+| 2 | Before 0.2.1 | Create a granular access token | npmjs.com → your avatar → Access Tokens → Generate New Token | Expiration: as short as covers the first release (npm's changelog gives 7 days as the default and 90 as the most for a token that can publish). Tick "Bypass two-factor authentication". Packages and scopes: "Read and write (publish and stage)", not the stage-only choice, for all packages (the package does not exist yet, so it probably cannot be picked by name). Organizations: no access. |
 | 3 | Before 0.2.1 | Store it as the repository secret `NPM_TOKEN` | GitHub → Settings → Secrets and variables → Actions → New repository secret, or `gh secret set NPM_TOKEN --repo tomcrawf90/paseo-plugin-claude-update` (it asks for the value) | Never paste it anywhere else. |
 | 4 | | Release 0.2.1 | "Each release" below | The workflow publishes with the token. The package gets a provenance statement either way. |
 | 5 | Right after 0.2.1 | Delete the `NPM_TOKEN` secret and revoke the token, unless the next release is days away | GitHub secrets; npmjs.com → Access Tokens | An all-packages token should not outlive its one use. |
@@ -37,7 +37,7 @@ Trusted publisher form (case-sensitive, exact):
 | Repository | `paseo-plugin-claude-update` |
 | Workflow filename | `release.yml` (the file name only, with its extension) |
 | Environment name | leave empty |
-| Allowed actions | Allow publishing directly with `npm publish`, which is what the workflow runs. Staged publishing alone is not enough. What the form selects by default was not seen. |
+| Allowed actions | Allow publishing directly with `npm publish`, which is what the workflow runs. npm's documentation says a trusted publisher created after 2026-09-03 allows only `npm stage publish` until direct publishing is chosen as well, so tick it. Staged publishing alone is not enough. |
 
 With both a trusted publisher and `NPM_TOKEN` present, npm uses the trusted publisher. npm's
 documentation also says that publishing directly with a granular token will be removed in January
@@ -73,6 +73,13 @@ git push origin v0.2.2
 `release:prepare` only edits the three files. It does not commit, tag or publish, and it refuses a
 version that already has a dated entry, an empty entry and a version lower than the current one.
 
+Before step 3, if a screen changed, run `npm run screenshots` (macOS with Chrome; it starts its own
+throwaway daemon) and commit the new `images/`. Both listings are covered in
+[SUBMISSION.md](SUBMISSION.md): after a release, the official directory opens its own update pull
+request and Paseo Cafe rescans npm, so nothing is submitted again. The official listing's images
+stay pinned to the commit they were given for until its `listing.media` is changed by a pull request
+to getpaseo/plugins.
+
 Which number: a fix is a patch, a new feature or setting is a minor, and a change that breaks an
 installed plugin's settings or drops a supported Paseo version is a major. A published version is
 never reused or moved; a bad release is followed by a new one.
@@ -86,7 +93,7 @@ Trigger: a pushed tag of the form `vX.Y.Z` (three numbers; a prerelease tag does
 | Verify and pack | The tagged commit is on `main` | The tag was made on another branch |
 | | `node scripts/release.mjs check --tag vX.Y.Z` | The tag is not `v` + the `package.json` version, the top changelog entry is another version, it is still `unreleased`, it is empty, or `## Unreleased` still holds changes |
 | | `node scripts/release.mjs unpublished` | npm already has this version, or the registry did not give a clear answer |
-| | `npm ci`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the Paseo Cafe pre-check or packing fails |
+| | `npm ci`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the listing pre-check or packing fails |
 | Publish to npm | npm is 11.5.1 or newer; the version is still not on npm | A second run for the same version |
 | | `npm publish <the packed tarball> --access public --provenance` | npm accepts neither the trusted publisher nor a token. The job fails with an error that says so; it never skips |
 | GitHub release | `gh release create vX.Y.Z <tarball>` with the changelog entry and the install line as notes | The release cannot be created. An existing release is left alone |
@@ -137,5 +144,5 @@ None of these are set by the code in this repository. Most useful first.
 | --- | --- |
 | The release workflow end to end | Never run: it starts only on a tag, and no tag has been pushed. Checked with `actionlint`; the checks it runs are tested in `scripts/release.test.mjs` and were run by hand against this repository. |
 | Publishing with a token, then with a trusted publisher | Not done. That npm tries the trusted publisher first and falls back to the token was read in the npm CLI source (`lib/utils/oidc.js`), not seen. |
-| The npm form and token screens | Taken from npm's documentation on 2026-10-07, not from the screens. That includes: a package must exist before it can name a trusted publisher, the 2-day expiry of an unused one, and the choices on the token form. |
+| The npm form and token screens | Taken from npm's documentation on 2026-10-07 and read again on 2026-10-20, not from the screens. That includes: a package must exist before it can name a trusted publisher, the 2-day expiry of an unused one, and the choices on the token form. |
 | The ruleset and settings names | Written from GitHub's documentation, not clicked through on this repository. |

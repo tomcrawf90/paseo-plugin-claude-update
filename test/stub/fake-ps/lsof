@@ -1,0 +1,7 @@
+#!/bin/sh
+# A stand-in for `lsof -Fpn`, matching the processes test/stub/fake-ps/ps lists.
+v="${FAKE_PS_VERSION:-2.1.303}"
+for pid in 4101 4188 4230; do
+  echo "p$pid"
+  echo "n/Users/demo/.local/share/claude/versions/$v"
+done

@@ -1,122 +1,142 @@
-# Publishing and submitting to Paseo Cafe
+# Publishing and listing
 
-The GitHub repository exists and is public: <https://github.com/tomcrawf90/paseo-plugin-claude-update>.
-Nothing else here has been done: no release tag, no npm package, no registry entry. Every step
-below is the owner's decision. How a version is released is in [RELEASING.md](RELEASING.md).
+One npm package, `paseo-plugin-claude-update`, is listed in two places:
 
-Sources, read 2026-10-07: <https://paseo.cafe/submit>, the registry repository
-<https://github.com/paseo-cafe/paseo-cafe> (README, `.github/ISSUE_TEMPLATE/plugin-submission.yml`,
-`src/lib/registry-schema.ts`, `.github/security/semgrep.yml`, `scripts/plugin-security/static-scan.ts`),
-the catalog <https://paseo.cafe/api/plugins> (231 plugins), and <https://paseo.sh/docs/plugins/publishing.md>.
-
-## 1. Decide before anything is published
-
-| # | Decision | Proposed | Why it matters |
+| Listing | Where | Install line it gives | How it is listed |
 | --- | --- | --- | --- |
-| 1 | Plugin id | `claude-update` | It is the registry filename, the id in `paseo-plugin.json` and the name on the listing. Changing it later is a new listing. Free on Paseo Cafe on 2026-10-07. |
-| 2 | npm package name | `paseo-plugin-claude-update` (unscoped) | Free on npm on 2026-10-07. Alternative: a scope, e.g. `@tomcrawf90/paseo-claude-update` (138 of 231 listed plugins are scoped). Change `name` in `package.json` and the install line in `README.md` if you choose another. |
-| 3 | GitHub repository | `tomcrawf90/paseo-plugin-claude-update`, public. Decided: it exists | Paseo Cafe needs a public GitHub repository. `package.json` (`homepage`, `repository`, `bugs`) points at it, and npm provenance checks that it does. |
-| 4 | Licence and author | MIT, "Tom Crawford" | In `LICENSE` and `package.json`. 216 of 231 listed plugins are MIT. |
-| 5 | Supported Paseo versions | `>=0.10.3 <0.12.0 \|\| >=0.11.0-beta.1 <0.12.0` | Typechecked and run against 0.10.3 only. The second half lets 0.11 betas load it, which a plain `>=0.10.3` does not (a prerelease only matches a range that names one). Untested on 0.11; 0.12 needs a new release. Lowering the minimum needs a test on the older version. |
-| 6 | First-run behaviour | Auto-update off: a fresh install reports an available update and changes nothing until the user turns on "Auto-update Claude Code" | Installing a plugin should not change the host's CLI unasked. The alternative is to default to installing (`mode` in `shared/settings.ts`). |
+| The official Paseo plugin directory | <https://plugins.paseo.sh>, from <https://github.com/getpaseo/plugins> | `paseo plugin add tomcrawf90/claude-update` (Paseo 0.11 or later) | An issue form; a reviewer approves it |
+| Paseo Cafe | <https://paseo.cafe>, from <https://github.com/paseo-cafe/paseo-cafe> | `paseo plugin install npm:paseo-plugin-claude-update` | A form that opens an issue; a bot adds the entry |
 
-## 2. Before publishing
+Nothing has been submitted or published yet. Every outward step below is the owner's decision. How
+a version is released is in [RELEASING.md](RELEASING.md).
 
-| Step | Command or action | Done |
-| --- | --- | --- |
-| Install it in your own Paseo and use it | `paseo plugin install /absolute/path/to/paseo-plugin-claude-update` (your checkout), then `paseo plugin ls` | no |
-| Check the screens in the app, in a wide window, a narrow one and a dark theme | Status page (the "Checks" card with the last and next check, the spinner on "Check now" and "Update now", the result line, the auto-update switch), settings screen (its "Checks" section and "Check now"), the sidebar row ("Claude Code updates", on one line) reading "Claude update ready" while an update waits with auto-update off, and going back when it is dismissed or installed or after an update | no |
-| Capture screenshots into `images/` | PNG or WebP, e.g. `images/status.png`, `images/settings.png`. Paseo Cafe shows every image in that folder. None exist yet: the screens have been seen in the app's web bundle in a browser (2026-10-08), not in the desktop window or on a phone. | no |
-| Set the release date | `npm run release:prepare -- 0.2.1` on a release branch dates the `CHANGELOG.md` entry (RELEASING.md) | no |
-| Verify | `npm run verify` and `npm pack --dry-run` | passes on 2026-10-07 |
+Sources, read 2026-10-21: getpaseo/plugins at `702e140` (README, REVIEW.md, BOTS.md,
+`.github/ISSUE_TEMPLATE/submit-plugin.yml`, `scripts/lib/`), <https://paseo.sh/docs/plugins/publishing.md>,
+<https://plugins.paseo.sh/index.json> (341 plugins); paseo-cafe/paseo-cafe at `2e81844` (README,
+`.github/ISSUE_TEMPLATE/plugin-submission.yml`, `src/lib/registry-schema.ts`, `src/lib/images.ts`,
+`scripts/scan.ts`, `scripts/plugin-security/static-scan.ts`), <https://paseo.cafe/api/plugins> (246 plugins).
+
+## 1. What each listing needs, and where it is
+
+| Need | Official directory | Paseo Cafe | In this repository |
+| --- | --- | --- | --- |
+| npm package, public, released version | Yes; read from npm at the version given | Yes; its version must equal `package.json` in the repository | `paseo-plugin-claude-update`, from the release workflow |
+| Public GitHub repository | Yes: the listing's owner (`tomcrawf90`) comes from npm provenance or `package.json` `repository`, which must agree | Yes | `package.json` `repository`; the release publishes with provenance |
+| Listing id | The package name without `paseo-plugin-`: `claude-update` | The registry filename, equal to the manifest `id` | `claude-update` in `paseo-plugin.json` |
+| Display name | The issue title | The id | "Claude Code updates" in the issue title |
+| Description | `package.json` `description` | `paseo-plugin.json` `description` | The same sentence in both; `npm run lint:listings` fails if they differ |
+| Manifest keys | Any; `name`, `icon` and `media` are read if present | Only `id`, `requirements`, `build`, `description`; `name`, `icon` and `media` only when every minimum of the range is 0.11.0 or later | `id`, `description`, `requirements` (see 2) |
+| Overview page | `OVERVIEW.md` in the package, or one the reviewer writes. Must explain what the plugin installs, runs, reads and sends, and give the supported systems and Paseo versions; no install commands | Not used | `OVERVIEW.md`, in `files` |
+| Screenshots | At least one image of a visual plugin's interface, PNG, JPG, WebP or GIF (no SVG); the first is the card thumbnail. From the manifest's `media`, or as image addresses given in the submission. No size or count rule | Optional. Every file in `images/`, then images in the README from GitHub hosts, at most 8 | `images/01-status-update-ready.png` (thumbnail), `02-status-after-update.png`, `03-settings.png`, 2880×1800, shown in the README |
+| Runtime dependencies | Need an npm shrinkwrap | Counted in the scan | None |
+| Code checks | A reviewer reads the package (REVIEW.md "Security review") | A static scan of the manifest and the modules reachable from the entries, at most 200 files and 2 MB, of the repository and of the npm package | `npm run lint:listings` runs the parts that can be run locally |
+| Licence, README, tests | Licence shown | README "Install" and "Limitations" quoted; `test` and `typecheck` scripts scored | MIT; both sections; both scripts |
+
+## 2. Decisions taken
+
+| # | Decision | Chosen | Why |
+| --- | --- | --- | --- |
+| 1 | Plugin id and package name | `claude-update`, `paseo-plugin-claude-update` | Free on npm and in both listings on 2026-10-21. The official id is the package name without `paseo-plugin-`, so both listings use `claude-update`. |
+| 2 | Supported Paseo versions | `>=0.10.3 <0.13.0` | Run against 0.10.3, 0.11.4 and 0.12.0. Betas pass because Paseo also tests a version's `major.minor.patch`. The cap means every new Paseo minor needs a release that raises it once the plugin has run on it. |
+| 3 | Screenshots outside the manifest | No `name`, `icon` or `media` in `paseo-plugin.json` | Paseo 0.10 and the 0.11 betas refuse a manifest with them, and Paseo Cafe would reject them with a 0.10.3 minimum. The official directory takes image addresses in the submission instead and keeps them across versions. Move them into the manifest in the release that drops Paseo 0.10. |
+| 4 | Categories | Official: Daemon management, Sidebar. Paseo Cafe: automation, monitoring | The closest of each listing's own lists. |
+| 5 | First-run behaviour | Auto-update off | Installing a plugin should not change the host's CLI unasked. |
 
 ## 3. Publish
 
-Publishing is done by the release workflow when a tag is pushed, not by hand. The one-time npm
-setup (an account, a token for the first release, the trusted publisher after it) and the release
-steps are in [RELEASING.md](RELEASING.md).
+Publishing is done by the release workflow when a tag is pushed, never by hand. The npm setup and the
+release steps are in [RELEASING.md](RELEASING.md).
 
 | # | Step | Done |
 | --- | --- | --- |
 | 1 | GitHub repository, public | yes |
-| 2 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md "Once, around the first two releases") | no |
-| 3 | Release pull request for 0.2.1, merged; tag `v0.2.1` pushed from `main` | no |
-| 4 | The Release workflow ended green: the package is on npm and the GitHub release exists | no |
-| 5 | The published package installs: `paseo plugin install npm:paseo-plugin-claude-update@0.2.1` | no |
+| 2 | Release pull request for 0.2.1, merged | no |
+| 3 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md) | no |
+| 4 | Tag `v0.2.1` pushed from `main`; the Release workflow ended green | no |
+| 5 | `npm view paseo-plugin-claude-update@0.2.1` answers, and the package installs in a throwaway daemon | no |
 
-`npm pack --dry-run` on 2026-10-08 (26 files, about 35 kB packed): `CHANGELOG.md`,
-`LICENSE`, `README.md`, `package.json`, `paseo-plugin.json`, `index.client.tsx`, `index.server.ts`,
-`client/{settings,status}.tsx`, `client/{activity,bus,check,sidebar}.ts`, `server/{claude,handlers,notify,paths,processes,run,service,store,updater}.ts`,
-`shared/{format,settings,status,version}.ts`. Tests, the stub, the release script, CI and these notes are not published.
+`npm pack --dry-run` on 2026-10-21: 29 files, 40.5 kB packed. The manifest, the two entries,
+`client/`, `server/`, `shared/` without tests, `OVERVIEW.md`, `README.md`, `CHANGELOG.md`, `LICENSE`,
+`package.json`. Tests, stubs, scripts, images, CI and these notes are not published.
 
-## 4. Submit to Paseo Cafe
+## 4. The official Paseo plugin directory
 
-Submission is a form at <https://paseo.cafe/submit>. It opens a prefilled GitHub issue in
-`paseo-cafe/paseo-cafe`; a bot turns the issue into a pull request that adds
-`registry/claude-update.json`. There is no CLI. You need to be signed in to GitHub.
+After 0.2.1 is on npm. You need to be signed in to GitHub.
+
+1. Open <https://github.com/getpaseo/plugins/issues/new?template=submit-plugin.yml> and fill in:
+
+   | Field | Value |
+   | --- | --- |
+   | Title | `Claude Code updates` (it becomes the listing's name) |
+   | Source | `npm:paseo-plugin-claude-update@0.2.1` |
+   | Categories | Daemon management (first, so it is the main one), Sidebar |
+
+2. The form has no field for images. Once the issue is open, edit its description (or add a
+   comment) and add the three screenshots, pinned to the released commit:
+
+   ```bash
+   C=$(git rev-list -n1 v0.2.1)
+   for f in 01-status-update-ready 02-status-after-update 03-settings; do
+     echo "https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/$C/images/$f.png"
+   done
+   ```
+
+   Check that each address answers 200 with `content-type: image/png` before pasting them, under a
+   heading such as "Screenshots (the first is the card image)".
+
+3. A bot opens a "Review" pull request in getpaseo/plugins that adds
+   `plugins/tomcrawf90/claude-update.json`; the reviewer may ask questions there. Once it is merged
+   the plugin installs with `paseo plugin add tomcrawf90/claude-update`.
+
+After that, each new npm version reaches the directory through its own update pull requests (twice a
+day). Those keep the listing's name, categories and images; new screenshots need a pull request to
+getpaseo/plugins that changes `listing.media`.
+
+## 5. Paseo Cafe
+
+After 0.2.1 is on npm. Submission is the form at <https://paseo.cafe/submit>, which opens a
+prefilled issue in paseo-cafe/paseo-cafe; a bot turns it into a pull request that adds
+`registry/claude-update.json`.
 
 | Form field | Value to enter | Notes |
 | --- | --- | --- |
 | Registry id | `claude-update` | Must equal `id` in `paseo-plugin.json`. |
-| GitHub repository | `tomcrawf90/paseo-plugin-claude-update` | `owner/repo`, not a URL. Must be public. |
+| GitHub repository | `tomcrawf90/paseo-plugin-claude-update` | `owner/repo`, not a URL. |
 | Plugin subpath | leave empty | The repository is the plugin. |
-| npm package | `paseo-plugin-claude-update` | Must be public on npmjs.org with the same id and version as the repository. |
+| npm package | `paseo-plugin-claude-update` | |
 | Categories | `automation`, `monitoring` | Allowed: automation, browser, code-review, git, github, monitoring, orchestration, productivity, provider, theme, other. |
-| Platforms | `macos` | Only macOS has been tested. Leave blank only once Linux or Windows is known to work. |
+| Platforms | leave empty | The form asks for platforms only when a plugin works on nothing else. Updating works wherever Claude Code's native installer does; only the process list and notifications are macOS only, which the third caveat says. |
 | Caveats | the six lines below | One per line, up to 6, each one sentence of at most 140 characters. |
 | Confirmation 1 | tick | "`paseo-plugin.json.id` in my repo matches the registry filename". True. |
-| Confirmation 2 | tick after publishing | "The npm package is public, contains the same plugin ID, and has a released semantic version rather than `0.0.0`". True once step 3 is done. |
+| Confirmation 2 | tick | "The npm package is public, contains the same plugin ID, and has a released semantic version rather than `0.0.0`". True once 0.2.1 is on npm. |
 
 Caveats to paste (each is under 140 characters):
 
 ```text
 Only reports updates until you turn on "Auto-update Claude Code"; then it runs claude update on a schedule.
-Supports Claude Code's native installer only, not Homebrew, WinGet or npm installs.
+Supports Claude Code's native installer only, not Homebrew, WinGet or npm-based installs.
 Tested on macOS only; listing old processes and desktop notifications are macOS only.
 Running agents keep their old Claude Code version until you restart them; nothing is restarted for you.
 Follows Claude Code's own autoUpdatesChannel; set that to stable yourself to follow the stable channel.
 Reads process environments on the host to match processes to agents; only the Paseo agent id is used.
 ```
 
-## 5. What the listing is built from
+Paseo Cafe rescans npm every 15 minutes and the repository every six hours; a new npm version needs
+no new submission, but `package.json` on `main` must name the version npm has.
 
-| Listing part | Comes from | State |
-| --- | --- | --- |
-| Name | The registry id | `claude-update` |
-| Description, author, licence | `package.json`, `paseo-plugin.json`, `README.md` | Filled in |
-| Version | The published npm version, which must match `package.json` in the repository | `0.2.1` |
-| Install notes | The `## Install` section of `README.md`, quoted as written | Written |
-| Limitations | The `## Limitations` section of `README.md`, plus the caveats above | Written |
-| Screenshots | Every image in `images/` | **Missing**: see step 2 |
-| Demo video | A YouTube or Loom link in `README.md` | None; optional |
-| Health badges | Valid manifest, README, LICENSE, a `test` script, a `typecheck` script, recent activity | All present |
-| Icon | Not used. The scanner rejects the manifest keys `name`, `icon` and `media` that Paseo 0.11 added | Nothing to do |
+## 6. Rules `npm run lint:listings` checks
 
-## 6. Rules the scanner enforces
-
-`npm run lint:cafe` checks the ones that can be checked locally.
-
-| Rule | Status |
+| Rule | Listing |
 | --- | --- |
-| `paseo-plugin.json` holds only `id`, `requirements`, `build` and `description`; any other key fails | Met |
-| `id` is lowercase kebab-case and equals the registry filename | Met |
-| `requirements.paseo` is a valid range for 0.8 or later | Met (`>=0.10.3 <0.12.0 \|\| >=0.11.0-beta.1 <0.12.0`; every branch's minimum is above 0.9.0-beta.1, so `description` is allowed) |
-| No source file (`.ts`, `.tsx`, `.js`, `.jsx`), comments and tests included, contains the text of a synchronous process call, a shell `-c` invocation, or a command-line download tool | Met. The plugin starts processes with `execFile` only |
-| Imports stay inside `client/`, `server/`, `shared/`; no Node modules in client or shared code | Met |
-| No symlinks; at most 200 files and 2 MB | Met (57 files, 0.5 MB) |
-| The npm tarball passes the same scan | Not run: the real scanner runs only after submission |
-
-## 7. After it is listed
-
-Paseo Cafe rescans npm every 15 minutes and Git every six hours. To release an update, follow
-[RELEASING.md](RELEASING.md): a release pull request that bumps the version and dates the changelog,
-then a tag `vX.Y.Z` on `main`, which publishes. No new submission is needed. Paseo Cafe wants the
-npm version and the version in the repository's `package.json` to be the same, which is why `main`
-keeps the released version between releases.
+| Manifest keys allowed for the range; `id` lowercase kebab-case, 2 to 64 characters; `requirements.paseo` a valid range that does not reach below 0.8 | Paseo Cafe |
+| The modules reachable from `index.server.ts` and `index.client.tsx` stay inside `client/`, `server/` and `shared/`, at most 200 files and 2 MB with the manifest | Paseo Cafe |
+| No symlinks, and no source file containing a synchronous process call, a shell `-c` or a command-line download tool (an older Paseo Cafe text rule, still in its repository) | Paseo Cafe |
+| `package.json` and the manifest have the same description; `repository` names the GitHub repository; the package name without `paseo-plugin-` is the manifest `id`; no runtime dependencies | Official directory |
+| `OVERVIEW.md` exists, is in `files`, and names no install command | Official directory |
+| `images/` holds only images, at most 8, each shown in the README; README has "Install" and "Limitations" sections; `LICENSE` exists; a released version; `test` and `typecheck` scripts | Both |
 
 ## Could not be determined
 
-- Whether the real scanner passes: it runs on submission. The local pre-check covers its published rules only.
-- How long review takes, and whether a human reviews beyond the automated checks. The site says listings are not reviewed or vouched for.
-- Whether Paseo Cafe will accept `name`, `icon` and `media` in the manifest later. Its scanner rejected them on 2026-10-07.
-- The official Paseo registry (<https://github.com/getpaseo/plugins>, `paseo plugin add owner/slug`) is a separate listing with its own rules, including a required `OVERVIEW.md` in the repository and in the npm package (so in `files`). It was not prepared here. Its ownership rule accepts a package with npm provenance from anyone, which the release workflow provides.
+- Whether either listing's checks pass in full: they run on submission. The local check covers their published rules only.
+- How long review takes. The official directory's reviewer is partly a bot run every 30 minutes; Paseo Cafe says listings are not reviewed or vouched for.
+- Whether the Paseo app's directory browser offers a plugin to a Paseo version its range excludes. Nothing in the app was found to filter on it; an excluded version shows an error at install.

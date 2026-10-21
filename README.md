@@ -32,10 +32,34 @@ New agents use the new version as soon as it is installed. Agents that are alrea
 version they started with until they are restarted; that is how Claude Code works, and the plugin
 only lists them.
 
+## Screenshots
+
+Taken from Paseo 0.12's own web app against a throwaway daemon with made-up data (`npm run screenshots`).
+
+An update is waiting and auto-update is off, so the sidebar row says so:
+
+![The status page with an update waiting](images/01-status-update-ready.png)
+
+After "Update now": the release notes, the command to go back, and the processes still on the old version:
+
+![The status page after an update](images/02-status-after-update.png)
+
+The settings screen:
+
+![The settings screen](images/03-settings.png)
+
 ## Install
 
-Requires Paseo 0.10.3 or 0.11 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
+Requires Paseo 0.10.3 to 0.12 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
 installed with its native installer on the daemon host.
+
+From the official Paseo plugin directory, once it is listed there (Paseo 0.11 or later):
+
+```bash
+paseo plugin add tomcrawf90/claude-update
+```
+
+From npm, on any supported Paseo:
 
 ```bash
 paseo plugin install npm:paseo-plugin-claude-update
@@ -151,7 +175,7 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 
 ## Limitations
 
-- Supports Claude Code's native installer. A Homebrew, WinGet or npm install has a different update command and is not handled.
+- Supports Claude Code's native installer. Claude Code installed with Homebrew, WinGet or through npm has a different update command and is not handled.
 - Tested on macOS only. Linux and Windows are untested; listing old processes and desktop notifications are macOS only.
 - Running agents and Claude's background daemon keep their old version until you restart them. The plugin does not restart anything.
 - The schedule runs only while the Paseo daemon is running and the plugin is enabled. A check missed while the machine slept runs within a minute of waking.
@@ -162,8 +186,8 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 
 Not verified at the time of writing (0.2.1): how the status page, settings screen and sidebar row
 look in the Paseo desktop window or on a phone (they were seen in the app's own web bundle in a browser, against a throwaway daemon), and
-whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in a real Paseo
-0.10.3 daemon against a throwaway copy of the CLI.
+whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in real Paseo
+0.10.3, 0.11.4 and 0.12.0 daemons against a throwaway copy of the CLI.
 
 ## Development
 

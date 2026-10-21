@@ -1,0 +1,9 @@
+#!/bin/sh
+# A stand-in for macOS `ps -axEww -o pid=,lstart=,command=`, for screenshots:
+# three made-up Claude Code processes on FAKE_PS_VERSION, two of them Paseo
+# agents. Nothing here is read from the machine.
+v="${FAKE_PS_VERSION:-2.1.303}"
+bin="/Users/demo/.local/share/claude/versions/$v"
+echo "  4101 Tue Oct 20 08:02:11 2026     $bin -p --output-format stream-json PASEO_AGENT_ID=demo-agent-1 HOME=/Users/demo"
+echo "  4188 Tue Oct 20 08:40:52 2026     $bin -p --output-format stream-json PASEO_AGENT_ID=demo-agent-2 HOME=/Users/demo"
+echo "  4230 Tue Oct 20 09:15:37 2026     $bin HOME=/Users/demo"
