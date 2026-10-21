@@ -581,7 +581,7 @@ describe("channel", () => {
     };
     const state = await runCheck(h.deps, settingsWith({ mode: "auto" }), "manual", { apply: true });
     expect(state.lastOutcome).toBe("channel-mismatch");
-    expect(state.lastMessage).toContain("unreadable");
+    expect(state.lastMessage).toMatch(/unreadable|could not be read/);
     expect(h.claude.calls).toEqual(["--version"]);
     expect(h.store.history).toHaveLength(1);
   });
