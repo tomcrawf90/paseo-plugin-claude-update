@@ -28,7 +28,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
 | `test/listing-check.mjs` | Local copy of both listings' rules that can be checked here (`npm run lint:listings`). |
 | `SUBMISSION.md` | What each listing needs and the exact submission for each. |
-| `scripts/compat.mjs`, `.github/workflows/compat.yml` | The Paseo compatibility check (`npm run check:compat`): the range, a typecheck against the SDK and a throwaway daemon, for the minimum and the newest Paseo on npm. Daily in CI, outside `CI passed`; a failed daily run opens an issue. |
+| `scripts/compat.mjs`, `.github/workflows/compat.yml` | The Paseo compatibility check (`npm run check:compat`): the range, a typecheck against the SDK and a throwaway daemon, for the minimum and the newest Paseo on npm. Daily in CI, outside `CI passed`; a failed run on main opens an issue. |
 | `scripts/daemon.mjs`, `scripts/screenshots.mjs`, `test/stub/fake-ps/` | A throwaway daemon of any Paseo version with the plugin installed and the stand-in CLI; the screenshot run on top of it (Paseo's web app in headless Chrome, a made-up process list, the host name "Demo Mac"). Not published, never run in CI. |
 | `scripts/release.mjs` | The release checks (`check`, `unpublished`, `notes`) and the version bump (`prepare`). Plain Node, no dependencies; `scripts/release.test.mjs` tests it. Not published. |
 | `.github/workflows/ci.yml` | Verify on Linux and macOS with Node 22 and 24, lint the workflows, and one `CI passed` check for branch protection. |

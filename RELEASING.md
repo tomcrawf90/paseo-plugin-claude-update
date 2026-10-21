@@ -86,11 +86,11 @@ never reused or moved; a bad release is followed by a new one.
 
 ## When Paseo changes
 
-`.github/workflows/compat.yml` runs `npm run check:compat` every day, and on pull requests that touch
-the range or the check: against the lowest Paseo the range admits and the newest `@getpaseo/cli` on
-npm, betas included. For each it reports whether `requirements.paseo` admits the version (by Paseo's
+`.github/workflows/compat.yml` runs `npm run check:compat` every day, and on pull requests and pushes that
+touch the plugin's code, the range or the check: against the lowest Paseo the range admits and the
+newest Paseo on npm (published as both `@getpaseo/cli` and `@getpaseo/plugin`), betas included. For each it reports whether `requirements.paseo` admits the version (by Paseo's
 own test), whether the plugin typechecks against that `@getpaseo/plugin`, and whether a throwaway
-daemon of that version loads the plugin and answers its RPCs. A failed daily run opens an issue (or
+daemon of that version loads the plugin and answers its RPCs. A failed run on main opens an issue (or
 comments on the open one).
 
 | The summary says | Do |

@@ -15,6 +15,12 @@ on:
       - paseo-plugin.json
       - package.json
       - package-lock.json
+      - index.server.ts
+      - index.client.tsx
+      - client/**
+      - server/**
+      - shared/**
+      - test/stub/**
       - scripts/compat.mjs
       - scripts/daemon.mjs
       - .github/workflows/compat.yml
@@ -23,15 +29,22 @@ on:
       - paseo-plugin.json
       - package.json
       - package-lock.json
+      - index.server.ts
+      - index.client.tsx
+      - client/**
+      - server/**
+      - shared/**
+      - test/stub/**
       - scripts/compat.mjs
       - scripts/daemon.mjs
       - .github/workflows/compat.yml
 
 permissions: {}
 
+# A push to main must not cancel a running daily check, whose failure would then go unreported.
 concurrency:
   group: compat-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   compat:
@@ -53,14 +66,17 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run check:compat -- --paseo ${{ matrix.paseo }}
+      - run: npm run check:compat -- --paseo "$PASEO"
+        env:
+          PASEO: ${{ matrix.paseo }}
 
   # GitHub mails a scheduled run's failure only to whoever last changed the
-  # schedule, so a failed daily run also opens (or comments on) an issue.
+  # schedule, so a failed run on main (daily or after a push) opens, or
+  # comments on, an issue.
   report:
-    name: Report a failed daily run
+    name: Report a failed run on main
     needs: compat
-    if: failure() && github.event_name == 'schedule'
+    if: failure() && (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -73,7 +89,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           title="Paseo compatibility check failed"
-          body="The daily check failed: $RUN_URL. Its summary says whether the range needs raising or the plugin needs a fix (RELEASING.md, \"When Paseo changes\")."
+          body="The check failed on main: $RUN_URL. Its summary says whether the range needs raising or the plugin needs a fix (RELEASING.md, \"When Paseo changes\")."
           number="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "$body"

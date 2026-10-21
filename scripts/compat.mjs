@@ -12,9 +12,9 @@
 //   npm run check:compat -- --paseo newest --skip-daemon
 //
 // "minimum" is the lowest version the range admits; "newest" is the highest
-// version of @getpaseo/cli on npm, prereleases included, so a beta of the next
-// minor is checked as soon as it is out. Network: npm, and the stand-in CLI's
-// look reads Claude Code's release pointer.
+// version published as both @getpaseo/cli and @getpaseo/plugin, prereleases
+// included, so a beta of the next minor is checked as soon as it is out.
+// Network: npm, and the plugin's look reads Claude Code's release pointer.
 import { execFile } from "node:child_process";
 import { appendFile, cp, mkdtemp, readFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
@@ -55,9 +55,16 @@ export function verdict(result) {
   return "ok";
 }
 
+async function npmVersions(name) {
+  const { stdout } = await run("npm", ["view", name, "versions", "--json"]);
+  const versions = JSON.parse(stdout);
+  return Array.isArray(versions) ? versions : [versions];
+}
+
+/** Versions of the daemon that also have a plugin SDK to typecheck against. */
 async function paseoVersions() {
-  const { stdout } = await run("npm", ["view", "@getpaseo/cli", "versions", "--json"]);
-  return JSON.parse(stdout);
+  const sdk = new Set(await npmVersions("@getpaseo/plugin"));
+  return (await npmVersions("@getpaseo/cli")).filter((version) => sdk.has(version));
 }
 
 /** Compiles a copy of the repository against @getpaseo/plugin@version. */
@@ -113,12 +120,17 @@ async function main(args) {
     try {
       // The repository's own devDependency is typechecked by npm run verify already.
       if (!values["skip-typecheck"] && version !== packageJson.devDependencies["@getpaseo/plugin"]) {
-        try {
-          await typecheck(version, work);
-          result.typecheck = "ok";
-        } catch (error) {
-          result.typecheck = "fail";
-          result.notes.push(`typecheck: ${String(error.stdout || error.message).trim().slice(0, 4000)}`);
+        if (!(await npmVersions("@getpaseo/plugin")).includes(version)) {
+          result.typecheck = "no SDK";
+          result.notes.push(`typecheck: @getpaseo/plugin@${version} is not on npm`);
+        } else {
+          try {
+            await typecheck(version, work);
+            result.typecheck = "ok";
+          } catch (error) {
+            result.typecheck = "fail";
+            result.notes.push(`typecheck: ${String(error.stdout || error.message).trim().slice(0, 4000)}`);
+          }
         }
         console.log(`  typecheck against @getpaseo/plugin@${version}: ${result.typecheck}`);
       }
