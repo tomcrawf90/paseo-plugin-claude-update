@@ -115,11 +115,12 @@ if (!existsSync(join(root, "OVERVIEW.md"))) {
 }
 
 // Images: Paseo Cafe shows every file in images/ and then the README's images,
-// at most eight, and removes only exact duplicate addresses; its images/
-// addresses name a commit, so screenshots kept there and also shown in the
-// README would appear twice. They live in docs/screenshots/ and the README
-// shows them by absolute address, as npm's page needs. Links from the README
-// to other files are absolute too: the npm page has no repository files.
+// at most eight, and removes only exact duplicate addresses. The README shows
+// the screenshots by their address on main, as npm's page needs, which never
+// equals the commit-pinned address Paseo Cafe gives a file in images/, so
+// screenshots kept there would appear twice. They live in docs/screenshots/.
+// Links from the README to other files are absolute too: the npm page has no
+// repository files.
 const readme = read("README.md");
 const SCREENSHOTS = "docs/screenshots";
 const RAW = "https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/main/";
