@@ -573,6 +573,18 @@ describe("channel", () => {
     expect(state).toEqual(expected);
     expect(h.store.history).toHaveLength(1);
   });
+
+  it("installs nothing, and says why, when Claude Code's settings cannot be read", async () => {
+    const h = harness("2.1.280", "2.1.292");
+    h.deps.readFile = async () => {
+      throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+    };
+    const state = await runCheck(h.deps, settingsWith({ mode: "auto" }), "manual", { apply: true });
+    expect(state.lastOutcome).toBe("channel-mismatch");
+    expect(state.lastMessage).toContain("unreadable");
+    expect(h.claude.calls).toEqual(["--version"]);
+    expect(h.store.history).toHaveLength(1);
+  });
 });
 
 describe("schedule arithmetic", () => {
