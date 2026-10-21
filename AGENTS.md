@@ -143,7 +143,7 @@ that tag is what publishes. [RELEASING.md](RELEASING.md) has every step; in shor
 Never run `npm publish` by hand, never move or reuse a tag, and never put a token in the repository.
 
 If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plugin.json`, the
-`@getpaseo/plugin` version in `package.json`, and the README. It is `>=0.10.3 <0.13.0`: 0.10.3 is the
+`@getpaseo/plugin` version in `package.json`, the README, `OVERVIEW.md` and `SUBMISSION.md`. It is `>=0.10.3 <0.13.0`: 0.10.3 is the
 oldest version the plugin has been typechecked and run against. No separate prerelease branch is needed:
 Paseo (`assertPluginCompatibility` in `packages/protocol/src/plugin-requirements.ts`, the same in 0.10.3
 and 0.12.0) accepts a version when either it or its `major.minor.patch` satisfies the range, so

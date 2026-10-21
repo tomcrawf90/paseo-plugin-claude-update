@@ -26,7 +26,7 @@ Claude Code** it also runs the CLI's own updater, `claude update`, and tells you
 | Lists old processes | On the status page: running Claude Code processes (Paseo agents and Claude's own background daemon) that are still on an older version. It never restarts or interrupts them. |
 | Shows release notes | On the status page: the notes for the update that is waiting, or else for the last update, with a link to the full notes for every release. |
 | Shows that it is working | Its status page says when it last checked (how long ago and the clock time), how that ended, when the version last changed, and when it checks next, and has a "Check now" button. The settings screen has the same lines. |
-| Stays out of the way | While Claude Code is up to date, and after an update that worked, the sidebar row reads only "Claude Code updates" and no toast is raised, whatever is still running an older version. A check that finds nothing new changes only the "Last checked" time. |
+| Stays out of the way | While Claude Code is up to date, and after an update that worked, the sidebar row reads only "Claude Code updates" and no toast is raised, whatever is still running an older version. A check that finds nothing new changes only the "Last checked" time and the "Last result" line. |
 
 New agents use the new version as soon as it is installed. Agents that are already running keep the
 version they started with until they are restarted; that is how Claude Code works, and the plugin
@@ -87,7 +87,7 @@ updates: settings". The row's title changes only when:
 | --- | --- | --- |
 | Claude update ready | A newer version is out and will not install itself: auto-update is off, or scheduled checks are | You dismiss the notice, or the update is installed |
 | Claude update failed | An update was tried and did not go in, or three checks in a row have failed | You dismiss the notice, or the update goes in. After failed checks alone, also when a check works again |
-| Claude pin mismatch | The installed version is not the pinned one, and auto-update is off | You dismiss the notice, or it matches again |
+| Claude pin mismatch | The installed version is not the pinned one and will not be moved to it by itself: auto-update is off, or scheduled checks are | You dismiss the notice, or it matches again |
 | Claude channel issue | Claude Code's own channel is not the plugin's, so nothing was installed | You dismiss the notice, or they match again |
 
 Whatever it reads, the row opens the status page, which has the detail. An update that went in
@@ -106,9 +106,8 @@ again only when the versions to show change. If they cannot be read, the card sa
 again an hour later.
 
 **Auto-update Claude Code.** On: the next scheduled check installs a new version by itself, with
-`claude update`. Off: you are only told. Either way, agents that are already running keep the
-version they started with until they are restarted, and after every update the status page shows
-the command that goes back to the version before.
+`claude update` (or moves to the pinned version, with `claude install <version>`). Off: you are only
+told. After every update the status page shows the command that goes back to the version before.
 
 **Check now** only looks: it compares versions and installs nothing, whether auto-update is on or
 off. **Update now** on the status page is the one button that installs. While either runs, or while
@@ -126,9 +125,9 @@ Settings are per daemon host, under **Settings → Plugins → Claude Code updat
 | Auto-update Claude Code | off | Off reports the update and changes nothing. On installs it at the next scheduled check. "Update now" on the status page installs it either way. The same switch is on the status page. (Stored as `mode`: `notify` or `auto`, as in 0.1.0, so an existing choice carries over.) |
 | Channel | `latest` | The channel the installed version is compared with: `latest` or `stable` (about a week behind). See the note below. |
 | Check every (hours) | 4 | 1 to 168. |
-| Pinned version | empty | An exact version such as `2.1.285`. While set, the plugin holds the CLI at that version with `claude install <version>` and never updates. |
+| Pinned version | empty | An exact version such as `2.1.285`. While set, newer versions are not installed. When another version is installed, a scheduled check with auto-update on, or "Update now", moves to the pin with `claude install <version>`; otherwise you are told ("Claude pin mismatch"). |
 | Path to claude | empty | Empty looks in `~/.local/bin/claude`, then on the daemon's `PATH`. |
-| Desktop notifications | on | A macOS notification after an update, after an update that failed, and after three failed checks in a row. |
+| Desktop notifications | on | A macOS notification for each new thing to know: an update that went in, a new version found and not installed, a pin or channel mismatch (each told once), an update that failed, and three failed checks in a row. |
 
 **Channel.** `claude update` follows Claude Code's own channel, the `autoUpdatesChannel` key in
 `~/.claude/settings.json` (`latest` when unset), not this plugin's setting. If the two differ the
@@ -156,9 +155,10 @@ After an update the status page shows the command for the previous version, for 
 claude install 2.1.285
 ```
 
-Run it in a terminal, and set **Pinned version** to the same version, or the next check will update
-again. Setting the pin alone also works: the plugin then runs that install itself. Clear the pin to
-follow the channel again.
+Run it in a terminal, and set **Pinned version** to the same version: with auto-update on, the next
+scheduled check would otherwise update again, and with it off, the next check would report the newer
+version as waiting. Setting the pin alone also works: "Update now", or the next scheduled check with
+auto-update on, then runs that install. Clear the pin to follow the channel again.
 
 ## Where things are kept
 
@@ -186,14 +186,15 @@ Under `$PASEO_HOME/plugin-data/claude-update/` (normally `~/.paseo/plugin-data/c
 
 Not verified at the time of writing (0.2.1): how the status page, settings screen and sidebar row
 look in the Paseo desktop window or on a phone (they were seen in the app's own web bundle in a browser, against a throwaway daemon), and
-whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in real Paseo
-0.10.3, 0.11.4 and 0.12.0 daemons against a throwaway copy of the CLI.
+whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in a real Paseo
+0.10.3 daemon against a throwaway copy of the CLI; in 0.11.4 and 0.12.0 daemons a look, "Update now"
+and the release notes were.
 
 ## Development
 
 ```bash
 npm install
-npm run verify    # typecheck, tests, a local pre-check for the Paseo Cafe scanner, the changelog check
+npm run verify    # typecheck, tests, a local pre-check for both listings' rules, the changelog check
 ```
 
 The tests use a stand-in `claude` (`test/stub/claude`) and never touch a real install or the
@@ -207,7 +208,7 @@ version is a git tag `vX.Y.Z` on `main`. Pushing that tag runs the release workf
 the tag against `package.json` and the changelog, publishes to npm with a provenance statement and
 creates the GitHub release with the same tarball attached. A release is prepared with
 `npm run release:prepare -- <patch|minor|major>` on a branch; the steps are in
-[RELEASING.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/RELEASING.md), and listing on Paseo Cafe is in [SUBMISSION.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/SUBMISSION.md).
+[RELEASING.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/RELEASING.md), and listing in the official Paseo directory and on Paseo Cafe is in [SUBMISSION.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/SUBMISSION.md).
 
 ## License
 

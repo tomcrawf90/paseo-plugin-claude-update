@@ -4,7 +4,7 @@ Issues and pull requests are welcome.
 
 ```bash
 npm install
-npm run verify      # typecheck, tests, the Paseo Cafe pre-check, the changelog check
+npm run verify      # typecheck, tests, the pre-check for both listings, the changelog check
 npm pack --dry-run  # what would be published
 ```
 
