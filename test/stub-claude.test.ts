@@ -174,7 +174,7 @@ describe("the command runner", () => {
   it("gives a program that asks a question end-of-file instead of a terminal", async () => {
     await setMode("asks");
     const result = await runCommand(STUB, ["update"], { env: env(), timeoutMs: 5000 });
-    expect(result).toMatchObject({ code: 4, timedOut: false });
+    expect(result).toMatchObject({ code: 4, error: null });
     expect(result.stdout).toContain("no terminal");
   });
 
@@ -182,7 +182,7 @@ describe("the command runner", () => {
     await setMode("hang");
     const started = Date.now();
     const result = await runCommand(STUB, ["update"], { env: env(), timeoutMs: 300 });
-    expect(result).toMatchObject({ code: null, timedOut: true, error: "timed out" });
+    expect(result).toMatchObject({ code: null, error: "timed out" });
     expect(Date.now() - started).toBeLessThan(5000);
   });
 

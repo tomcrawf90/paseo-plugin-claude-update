@@ -375,7 +375,7 @@ describe("failures", () => {
 
   it("fails on a timeout", async () => {
     const h = harness("2.1.285", "2.1.292");
-    h.claude.on.update = () => ({ code: null, stdout: "", stderr: "", error: "timed out", timedOut: true });
+    h.claude.on.update = () => ({ code: null, stdout: "", stderr: "", error: "timed out" });
     const state = await runCheck(h.deps, settingsWith(), "schedule");
     expect(state.lastMessage).toContain("timed out");
   });
