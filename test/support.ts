@@ -41,8 +41,8 @@ export function memoryStore(
   return store;
 }
 
-export const ok = (stdout: string): RunResult => ({ code: 0, stdout, stderr: "", error: null, timedOut: false });
-export const exit = (code: number, stdout = "", stderr = ""): RunResult => ({ code, stdout, stderr, error: null, timedOut: false });
+export const ok = (stdout: string): RunResult => ({ code: 0, stdout, stderr: "", error: null });
+export const exit = (code: number, stdout = "", stderr = ""): RunResult => ({ code, stdout, stderr, error: null });
 
 /**
  * A pretend CLI: `installed` is what `--version` reports, `update` moves it to

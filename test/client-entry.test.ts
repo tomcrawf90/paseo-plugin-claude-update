@@ -224,6 +224,24 @@ describe("the plugin in the app", () => {
     expect(fake.rows).toEqual([QUIET_ROW]);
   });
 
+  it("a check from the Command Center that the host refuses still opens the page, and leaves the row and nothing unhandled", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fake = app({ status: AVAILABLE });
+    load(fake);
+    await settle();
+    const answer = fake.rpc;
+    fake.rpc = async (contract, input) => {
+      if (contract.name === checkNow.name) throw new Error("The plugin settings could not be read");
+      return answer(contract, input);
+    };
+    await expect(fake.select("check-now")).resolves.toBeUndefined();
+    await settle();
+    expect(fake.opened).toEqual(["surface:status"]);
+    expect(titles(fake)).toEqual(["Claude update ready"]);
+    expect(warn).toHaveBeenCalledWith("[claude-update] the check could not be run:", expect.any(Error));
+    warn.mockRestore();
+  });
+
   it("changes nothing after it has been stopped", async () => {
     const fake = app({ status: QUIET, check: AVAILABLE });
     load(fake);

@@ -39,7 +39,7 @@ export function parseChangelog(text) {
       : heading.toLowerCase() === UNRELEASED
         ? { version: null, date: UNRELEASED, line: index }
         : null;
-    if (entry === null) throw new Error(`CHANGELOG.md line ${index + 1}: expected "## x.y.z - YYYY-MM-DD", "## x.y.z - unreleased" or "## Unreleased", found "${line}"`);
+    if (entry === null) throw new Error(`CHANGELOG.md line ${index + 1}: expected "## x.y.z - YYYY-MM-DD", "## x.y.z - unreleased", "## x.y.z - not published" or "## Unreleased", found "${line}"`);
     if (entries.length > 0) entries[entries.length - 1].end = index;
     entries.push(entry);
   });

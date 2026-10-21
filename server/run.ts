@@ -5,9 +5,8 @@ export interface RunResult {
   code: number | null;
   stdout: string;
   stderr: string;
-  /** Why the process could not be started or was stopped; null when it ran to an exit code. */
+  /** Why the process could not be started or was stopped ("timed out" for the timeout); null when it ran to an exit code. */
   error: string | null;
-  timedOut: boolean;
 }
 
 export interface RunOptions {
@@ -33,22 +32,21 @@ export const runCommand: Runner = (file, args, options = {}) =>
         { timeout: options.timeoutMs ?? 0, maxBuffer: MAX_OUTPUT_BYTES, env: options.env, windowsHide: true },
         (error, stdout, stderr) => {
           if (!error) {
-            resolve({ code: 0, stdout, stderr, error: null, timedOut: false });
+            resolve({ code: 0, stdout, stderr, error: null });
             return;
           }
           const failure = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null };
           if (typeof failure.code === "number") {
-            resolve({ code: failure.code, stdout, stderr, error: null, timedOut: false });
+            resolve({ code: failure.code, stdout, stderr, error: null });
             return;
           }
-          const timedOut = failure.killed === true;
-          resolve({ code: null, stdout, stderr, error: timedOut ? "timed out" : failure.message, timedOut });
+          resolve({ code: null, stdout, stderr, error: failure.killed === true ? "timed out" : failure.message });
         },
       );
       child.stdin?.end();
     } catch (error) {
       // Starting a process can throw outright, not only fail later: a sandbox
       // that forbids it (EPERM) does, and so does a malformed path.
-      resolve({ code: null, stdout: "", stderr: "", error: error instanceof Error ? error.message : String(error), timedOut: false });
+      resolve({ code: null, stdout: "", stderr: "", error: error instanceof Error ? error.message : String(error) });
     }
   });
