@@ -15,6 +15,8 @@ A version marked "not published" was finished but never reached npm; its changes
 - A notice of a waiting update that was replaced by a failure notice comes back when checks work again.
 - The status RPC reports `autoInstall`: whether the schedule installs what it finds.
 - The status page has a "Release notes" card: the Claude Code release notes for the update that is waiting, or else the last update (the newest three versions, each cut to its first 12 changes), and a link to the full changelog for every release. They are read from Anthropic's changelog after a check, never during one; if they cannot be read the card says why and keeps the link. The status RPC reports them as `releaseNotes`.
+- "Update now" pressed while a check is already looking waits for it and then installs. Before, it joined the look, installed nothing and said "Nothing was changed".
+- A Claude Code settings file that cannot be read (for example, no permission) no longer makes a check fail without a trace: the check goes on as for a file it cannot parse, and is recorded.
 
 ## 0.2.0 - not published
 
