@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@getpaseo/plugin": "0.10.3",
-    "@tanstack/react-query": "^5.90.11",
+    "@tanstack/react-query": "^5.104.4",
     "@types/node": "^22.10.2",
     "@types/react": "~19.2.0",
     "puppeteer-core": "^24.43.1",
@@ -60,6 +60,6 @@
     "semver": "^7.8.5",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   }
 }
