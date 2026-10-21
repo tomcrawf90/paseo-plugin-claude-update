@@ -73,6 +73,13 @@ git push origin v0.2.2
 `release:prepare` only edits the three files. It does not commit, tag or publish, and it refuses a
 version that already has a dated entry, an empty entry and a version lower than the current one.
 
+Before step 3, if a screen changed, run `npm run screenshots` (macOS with Chrome; it starts its own
+throwaway daemon) and commit the new `images/`. Both listings are covered in
+[SUBMISSION.md](SUBMISSION.md): after a release, the official directory opens its own update pull
+request and Paseo Cafe rescans npm, so nothing is submitted again. The official listing's images
+stay pinned to the commit they were given for until its `listing.media` is changed by a pull request
+to getpaseo/plugins.
+
 Which number: a fix is a patch, a new feature or setting is a minor, and a change that breaks an
 installed plugin's settings or drops a supported Paseo version is a major. A published version is
 never reused or moved; a bad release is followed by a new one.
@@ -86,7 +93,7 @@ Trigger: a pushed tag of the form `vX.Y.Z` (three numbers; a prerelease tag does
 | Verify and pack | The tagged commit is on `main` | The tag was made on another branch |
 | | `node scripts/release.mjs check --tag vX.Y.Z` | The tag is not `v` + the `package.json` version, the top changelog entry is another version, it is still `unreleased`, it is empty, or `## Unreleased` still holds changes |
 | | `node scripts/release.mjs unpublished` | npm already has this version, or the registry did not give a clear answer |
-| | `npm ci`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the Paseo Cafe pre-check or packing fails |
+| | `npm ci`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the listing pre-check or packing fails |
 | Publish to npm | npm is 11.5.1 or newer; the version is still not on npm | A second run for the same version |
 | | `npm publish <the packed tarball> --access public --provenance` | npm accepts neither the trusted publisher nor a token. The job fails with an error that says so; it never skips |
 | GitHub release | `gh release create vX.Y.Z <tarball>` with the changelog entry and the install line as notes | The release cannot be created. An existing release is left alone |
