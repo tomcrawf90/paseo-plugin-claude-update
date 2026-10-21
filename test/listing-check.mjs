@@ -114,19 +114,30 @@ if (!existsSync(join(root, "OVERVIEW.md"))) {
   if (/\bnpm i\b/.test(overview)) problems.push('OVERVIEW.md: names "npm i"; the listing gives the install command');
 }
 
-// Images: Paseo Cafe shows every file in images/, then README images, at most
-// eight; the official listing takes their addresses. Images only, and each one
-// shown in the README.
+// Images: Paseo Cafe shows every file in images/ and then the README's images,
+// at most eight, and removes only exact duplicate addresses. The README shows
+// the screenshots by their address on main, as npm's page needs, which never
+// equals the commit-pinned address Paseo Cafe gives a file in images/, so
+// screenshots kept there would appear twice. They live in docs/screenshots/.
+// Links from the README to other files are absolute too: the npm page has no
+// repository files.
 const readme = read("README.md");
-const images = existsSync(join(root, "images")) ? readdirSync(join(root, "images")) : [];
-if (images.length === 0) problems.push("images/: no screenshots");
-if (images.length > 8) problems.push(`images/: ${images.length} files; Paseo Cafe shows at most 8`);
+const SCREENSHOTS = "docs/screenshots";
+const RAW = "https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/main/";
+if (existsSync(join(root, "images"))) problems.push("images/: Paseo Cafe would show these next to the README's screenshots; keep screenshots in docs/screenshots/");
+const images = existsSync(join(root, SCREENSHOTS)) ? readdirSync(join(root, SCREENSHOTS)) : [];
+if (images.length === 0) problems.push(`${SCREENSHOTS}/: no screenshots`);
+if (images.length > 8) problems.push(`${SCREENSHOTS}/: ${images.length} files; Paseo Cafe shows at most 8`);
 for (const image of images) {
-  if (!/\.(png|jpe?g|webp|gif)$/i.test(image)) problems.push(`images/${image}: Paseo Cafe would show it; keep only images there`);
-  else if (!readme.includes(`](images/${image})`)) problems.push(`images/${image}: not shown in README.md`);
+  if (!/\.(png|jpe?g|webp|gif)$/i.test(image)) problems.push(`${SCREENSHOTS}/${image}: not an image`);
+  else if (!readme.includes(`](${RAW}${SCREENSHOTS}/${image})`)) problems.push(`${SCREENSHOTS}/${image}: not shown in README.md as ${RAW}${SCREENSHOTS}/${image}`);
 }
-for (const match of readme.matchAll(/\]\((images\/[^)]+)\)/g)) {
-  if (!existsSync(join(root, match[1]))) problems.push(`README.md: links ${match[1]}, which does not exist`);
+for (const match of readme.matchAll(/\]\(([^)\s]+)\)/g)) {
+  const target = match[1];
+  if (target.startsWith("#")) continue;
+  if (!/^https:\/\//.test(target)) problems.push(`README.md: links ${target}, which the npm page cannot resolve; use an https address`);
+  else if (target.startsWith(RAW) && !existsSync(join(root, target.slice(RAW.length)))) problems.push(`README.md: shows ${target}, which is not in the repository`);
+  else if (target.startsWith("https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/") && !existsSync(join(root, target.split("/blob/main/")[1].split("#")[0]))) problems.push(`README.md: links ${target}, which is not in the repository`);
 }
 if (!/^##\s+(Install|Installation|Setup|Getting started)\s*$/im.test(readme)) problems.push("README.md: no Install section for Paseo Cafe to quote");
 if (!/^##\s+(Limitations|Caveats|Known issues)\s*$/im.test(readme)) problems.push("README.md: no Limitations section for Paseo Cafe to quote");

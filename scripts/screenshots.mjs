@@ -1,5 +1,5 @@
-// Takes the listing screenshots in images/ from Paseo's own web app, served by
-// a throwaway daemon (scripts/daemon.mjs) with made-up data: the stand-in
+// Takes the listing screenshots in docs/screenshots/ from Paseo's own web app,
+// served by a throwaway daemon (scripts/daemon.mjs) with made-up data: the stand-in
 // Claude CLI, a made-up process list and the host name "Demo Mac". Before each
 // picture is saved, the page text is checked for this machine's name, the
 // user name and local paths, and the script stops if one is there.
@@ -48,7 +48,7 @@ const forbidden = [
 
 const work = await mkdtemp(join(tmpdir(), "claude-update-shots-"));
 const prefix = join(work, "paseo");
-const out = join(repoRoot, "images");
+const out = join(repoRoot, "docs", "screenshots");
 let daemon;
 let browser;
 try {

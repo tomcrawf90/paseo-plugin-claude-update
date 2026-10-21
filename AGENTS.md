@@ -14,7 +14,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | --- | --- |
 | `paseo-plugin.json` | Manifest: `id`, `description`, `requirements.paseo`. Paseo Cafe rejects any other key while the minimum is below 0.11, and Paseo 0.10 refuses `name`, `icon` and `media`. The description is the same sentence as `package.json`'s. |
 | `OVERVIEW.md` | The official Paseo directory's page for the plugin, shipped in the package: what it installs, runs, reads and sends. No install commands in it. |
-| `images/` | The listing screenshots, made by `npm run screenshots`. Paseo Cafe shows every file here, so nothing but images; each is shown in the README. |
+| `docs/screenshots/` | The listing screenshots, made by `npm run screenshots`, each shown in the README by its raw.githubusercontent.com address on `main`. Not in `images/`: Paseo Cafe shows that folder's files, by commit-pinned address, as well as the README's images, so with the README's `main` addresses each would appear twice. |
 | `index.server.ts` | Daemon entry: wires real dependencies (process runner, fetch, files, clock) into the service and registers settings and RPCs. |
 | `server/updater.ts` | One check, start to finish (`runCheck`), plus the schedule arithmetic (`isDue`, `backoffMs`). All the decisions are here. |
 | `server/service.ts` | The timer, the one-check-at-a-time guard, and the status the UI reads. |
@@ -46,7 +46,7 @@ npm run typecheck
 npm test            # vitest; uses test/stub/claude, no network, no real install
 npm run lint:listings   # official directory and Paseo Cafe pre-check
 npm run check:compat    # against the minimum and the newest Paseo on npm (installs it in a temporary directory)
-npm run screenshots     # retake images/ (macOS, Chrome; starts its own throwaway daemon)
+npm run screenshots     # retake docs/screenshots/ (macOS, Chrome; starts its own throwaway daemon)
 npm run check:release   # package.json and the top CHANGELOG.md entry name the same version
 npm run verify      # all four
 npm pack --dry-run  # exactly what would be published
@@ -112,7 +112,7 @@ Three facts about Paseo 0.10.3 that help here (read from the daemon's code, then
 ## Conventions
 
 - Commits: one logical change each, imperative subject in sentence case. Changes reach `main` through a pull request (<https://github.com/tomcrawf90/paseo-plugin-claude-update>); nothing is pushed to `main` directly.
-- Workflows: actions pinned to a commit with the version in a comment (Dependabot updates both), `permissions: {}` at the top and the least each job needs, no secret but the optional `NPM_TOKEN`. The job that publishes installs no dependencies and runs no package script.
+- Workflows: actions pinned to a commit with the version in a comment (Dependabot updates both), `permissions: {}` at the top and the least each job needs, no secret but the optional `NPM_TOKEN`. The job that publishes installs no dependencies and runs no package script, and every `npm ci` has `--ignore-scripts`, so no dependency's install script can change what is tested or packed.
 - No credentials in code, tests, logs or commits. `ps -E` output contains every process's environment: take `PASEO_AGENT_ID` from it and nothing else, and never log or store the raw text.
 - The install changes only through `claude update` and `claude install <version>`. Never download a release, write under `~/.local/share/claude`, relink `~/.local/bin/claude`, or read-modify-write `~/.claude.json` or `~/.claude/settings.json` (the latter is read, never written). That rule is about this plugin's code. The CLI's own installer does write there: `claude install <version>` (pin and rollback) rewrites `installMethod`, `autoUpdates` and `autoUpdatesProtectedForNative` in `~/.claude.json`, so never describe the plugin as leaving that file untouched.
 - Never restart, stop or message an agent. The plugin lists old processes and stops there.
@@ -170,7 +170,7 @@ the 0.12.0 status page and settings screen in its own web UI) and typechecked ag
 | macOS notification raised from the daemon | Not confirmed. One may have been raised during the throwaway-daemon run; errors from it are swallowed by design and nobody was watching the screen. |
 | Listing old processes | Verified through a live 0.10.3 daemon on 2026-10-07 (`status.get`): supported, and it reported the one process on an old version (a leftover 2.1.269) while the ten on the installed version were not listed. A home directory with a space in it is covered by tests only. |
 | A manual look-only check | Verified through a live daemon the same day: `status.check` with `apply: false` reported 2.1.285 against 2.1.292 and ran only `claude --version`. |
-| The release workflow | Never run (2026-10-07): no tag has been pushed and nothing is on npm. `actionlint` passes and the checks it calls are tested; publishing by token and by trusted publisher are both unseen. See "Not verified" in `RELEASING.md`. |
+| The release workflow | Run once, for `v0.2.1` on 2026-10-21: everything up to `npm publish` passed, and npm refused the token (E403), so nothing is on npm. Publishing by token and by trusted publisher, and the GitHub release job, are unseen. See "Not verified" in `RELEASING.md`. |
 | Linux, Windows | Untested. The process list and notifications are macOS only by design. |
 | Homebrew, WinGet, npm installs of Claude Code | Not supported; `claude update` is for the native installer. |
 | An update cut short by a plugin reload or daemon stop | Not tested. The CLI is assumed to leave the old version in place. |

@@ -7,8 +7,10 @@ changelog disagrees with it, and the release workflow fails when the tag does.
 
 Pushing the tag is the release. `.github/workflows/release.yml` does the rest.
 
-State on 2026-10-20: nothing is published, no tag exists and the release workflow has never run.
-0.2.1 is the first version to release.
+As of 2026-10-21: nothing is on npm. Tag `v0.2.1` was pushed on 71e405b and its run stopped at
+"Publish to npm" with `E403 ... You may not perform that action with these credentials` while
+`NPM_TOKEN` was set; the verify job, the tag checks and provenance signing all passed. 0.2.1 is still
+the first version to release, from a new tag ("When a release fails", 2 and 4).
 
 ## Once, around the first two releases
 
@@ -74,7 +76,7 @@ git push origin v0.2.2
 version that already has a dated entry, an empty entry and a version lower than the current one.
 
 Before step 3, if a screen changed, run `npm run screenshots` (macOS with Chrome; it starts its own
-throwaway daemon) and commit the new `images/`. Both listings are covered in
+throwaway daemon) and commit the new `docs/screenshots/`. Both listings are covered in
 [SUBMISSION.md](SUBMISSION.md): after a release, the official directory opens its own update pull
 request and Paseo Cafe rescans npm, so nothing is submitted again. The official listing's images
 stay pinned to the commit they were given for until its `listing.media` is changed by a pull request
@@ -110,13 +112,14 @@ Trigger: a pushed tag of the form `vX.Y.Z` (three numbers; a prerelease tag does
 | Verify and pack | The tagged commit is on `main` | The tag was made on another branch |
 | | `node scripts/release.mjs check --tag vX.Y.Z` | The tag is not `v` + the `package.json` version, the top changelog entry is another version, it is still `unreleased`, it is empty, or `## Unreleased` still holds changes |
 | | `node scripts/release.mjs unpublished` | npm already has this version, or the registry did not give a clear answer |
-| | `npm ci`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the listing pre-check or packing fails |
+| | `npm ci --ignore-scripts`, `npm run verify`, `npm pack --dry-run`, `npm pack` | Typecheck, tests, the listing pre-check or packing fails |
 | Publish to npm | npm is 11.5.1 or newer; the version is still not on npm | A second run for the same version |
 | | `npm publish <the packed tarball> --access public --provenance` | npm accepts neither the trusted publisher nor a token. The job fails with an error that says so; it never skips |
 | GitHub release | `gh release create vX.Y.Z <tarball>` with the changelog entry and the install line as notes | The release cannot be created. An existing release is left alone |
 
 The tarball attached to the GitHub release is the file that was published, packed once in the first
-job. The publish job installs no dependencies and runs no package script. It is the only job with
+job, after an install that runs no dependency's install script, so none can change what is packed.
+The publish job installs no dependencies and runs no package script. It is the only job with
 `id-token: write`; only the last job has `contents: write`.
 
 A version cannot be published twice: the workflow checks the registry before publishing, releases
@@ -131,7 +134,7 @@ run; it would have to be started again from the Actions page.
 | # | What happened | What to do |
 | --- | --- | --- |
 | 1 | Published to npm, GitHub release failed | Actions → the run → "Re-run failed jobs". Only the release job runs again. Do not re-run all jobs: the first one would stop at "already on npm". |
-| 2 | `npm publish` failed on credentials | Nothing was published. Fix the trusted publisher or the `NPM_TOKEN` secret (above), then "Re-run failed jobs". |
+| 2 | `npm publish` failed on credentials | Nothing was published. Fix the trusted publisher or the `NPM_TOKEN` secret (above), then "Re-run failed jobs". If `main` has changed since the tag, a re-run would publish the old commit: follow 4 instead. A token npm refuses gives `E403 ... You may not perform that action with these credentials` (seen 2026-10-21); check that it is "Read and write" (not stage only) for all packages and has not expired. |
 | 3 | The publish job is red but npm has the version (the upload went through and the answer was lost) | Check with `npm view paseo-plugin-claude-update versions`. Re-running stops at "already on npm", so make the GitHub release by hand: download the `release` artifact from the run (kept 7 days; it holds the tarball and `notes.md`) and run `gh release create vX.Y.Z <tarball> --verify-tag --title vX.Y.Z --notes-file notes.md`. |
 | 4 | A check failed before publishing (tag, changelog, tests) | Nothing was published. Fix it on `main` through a pull request. If the tag now points at the wrong commit, delete it (`git push origin :refs/tags/vX.Y.Z`, `git tag -d vX.Y.Z`) and tag the fixed commit. Only ever do this for a version that never reached npm. |
 | 5 | A bad version reached npm | Release a fixed patch version. `npm deprecate paseo-plugin-claude-update@X.Y.Z "reason"` warns people off the bad one. Do not unpublish and do not move the tag. |
@@ -159,7 +162,7 @@ None of these are set by the code in this repository. Most useful first.
 
 | Point | State |
 | --- | --- |
-| The release workflow end to end | Never run: it starts only on a tag, and no tag has been pushed. Checked with `actionlint`; the checks it runs are tested in `scripts/release.test.mjs` and were run by hand against this repository. |
+| The release workflow end to end | Run once, for `v0.2.1` on 2026-10-21: the tag checks, the verify job, packing and provenance signing passed, and npm refused the token (E403). The publish with an accepted token and the GitHub release job have not run. |
 | Publishing with a token, then with a trusted publisher | Not done. That npm tries the trusted publisher first and falls back to the token was read in the npm CLI source (`lib/utils/oidc.js`), not seen. |
 | The npm form and token screens | Taken from npm's documentation on 2026-10-07 and read again on 2026-10-20, not from the screens. That includes: a package must exist before it can name a trusted publisher, the 2-day expiry of an unused one, and the choices on the token form. |
 | The ruleset and settings names | Written from GitHub's documentation, not clicked through on this repository. |
