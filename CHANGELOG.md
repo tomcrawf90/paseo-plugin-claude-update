@@ -6,6 +6,7 @@ A version marked "not published" was finished but never reached npm; its changes
 ## 0.2.1 - 2026-10-20
 
 - Runs on Paseo 0.12 as well as 0.10.3 and 0.11.
+- The screens and README say what a pin does while auto-update is off (it is reported, and "Update now" installs it), which notices raise a desktop notification, and "Not checked yet" for old processes before the first check. An applied pin shows as a good result.
 - The sidebar row is always there, reading "Claude Code updates", and opens the status page. 0.2.0 took the row away while there was nothing to act on, which left the page, its "Check now" button and the time of the last check reachable only from the Command Center.
 - The status page begins with a "Checks" card: when the last check was (how long ago and the clock time), how it ended, the last time the version changed and from what to what, when the next scheduled check is, and the "Check now" and "Update now" buttons.
 - The settings screen (Settings → Plugins → Claude Code updates) has the same lines and a "Check now" action.
