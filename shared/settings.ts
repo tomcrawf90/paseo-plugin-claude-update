@@ -37,7 +37,7 @@ export const updateSettings = defineSettings({
       .default(""),
     /** Absolute path to the `claude` launcher, or empty to find it. */
     claudePath: z.string().max(1024).default(""),
-    /** Raise an operating-system notification for updates and repeated failures (macOS only). */
+    /** Raise an operating-system notification for each new notice: an update, a version waiting, a mismatch, a failure (macOS only). */
     desktopNotifications: z.boolean().default(true),
   }),
 });
@@ -57,7 +57,8 @@ export function withAutoUpdate(settings: UpdateSettings, on: boolean): UpdateSet
 }
 
 export const AUTO_UPDATE_LABEL = "Auto-update Claude Code";
-export const AUTO_UPDATE_ON = "On: the next scheduled check installs a new version by itself, with “claude update”.";
+export const AUTO_UPDATE_ON =
+  "On: the next scheduled check installs a new version by itself, with “claude update”, or moves to the pinned version, with “claude install <version>”.";
 export const AUTO_UPDATE_OFF = "Off: you are only told when a new version is out. Nothing is installed until you press Update now.";
 export const AUTO_UPDATE_SAFETY =
   "Agents that are already running keep the version they started with until they are restarted. After every update the status page shows the command that goes back to the version before.";

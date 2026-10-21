@@ -13,6 +13,29 @@ export const OUTCOME_LABELS: Record<Outcome, string> = {
   failed: "Failed",
 };
 
+/**
+ * Whether an outcome is good, bad or news to act on. The "Last result" line
+ * and the "Finished" line both colour by it, so they always agree.
+ */
+export function outcomeTone(outcome: Outcome | null): "good" | "bad" | "news" {
+  if (outcome === "failed") return "bad";
+  return outcome === "up-to-date" || outcome === "updated" || outcome === "pinned" || outcome === "pin-applied" ? "good" : "news";
+}
+
+/**
+ * What the "Still on an older version" card says when it lists no process,
+ * or null when it has some to list. With no installed version read yet there
+ * is nothing to compare the processes with.
+ */
+export function staleProcessesText(status: Pick<Status, "processListSupported" | "installedVersion" | "staleProcesses">): string | null {
+  if (!status.processListSupported) {
+    return "Running Claude Code processes could not be listed. Listing them works only on macOS.";
+  }
+  if (status.installedVersion === null) return "Not checked yet: the installed version is read at the first check.";
+  if (status.staleProcesses.length === 0) return "Every running Claude Code process is on the installed version.";
+  return null;
+}
+
 /** `in 3 h`, `5 min ago`, `just now`; `never` for null. */
 export function relativeTime(iso: string | null, now: number): string {
   if (iso === null) return "never";

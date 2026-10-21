@@ -11,10 +11,12 @@ import {
   moreVersionsText,
   nextCheckText,
   notesSummary,
+  outcomeTone,
   QUIET_ROW,
   relativeTime,
   sidebarRow,
   SIDEBAR_TITLE_MAX,
+  staleProcessesText,
 } from "./format";
 import type { HistoryEntry } from "./status";
 
@@ -211,5 +213,45 @@ describe("release notes text", () => {
     expect(moreItemsText(40)).toBe("and 40 more changes");
     expect(moreVersionsText(1)).toBe("1 older version in this range is not shown here; it is in the full notes.");
     expect(moreVersionsText(4)).toBe("4 older versions in this range are not shown here; they are in the full notes.");
+  });
+});
+
+describe("the tone of an outcome", () => {
+  it("counts a move to the pinned version as good, like an update", () => {
+    expect(outcomeTone("pin-applied")).toBe("good");
+    expect(outcomeTone("updated")).toBe("good");
+    expect(outcomeTone("up-to-date")).toBe("good");
+    expect(outcomeTone("pinned")).toBe("good");
+  });
+
+  it("counts a failure as bad and anything to act on as news", () => {
+    expect(outcomeTone("failed")).toBe("bad");
+    expect(outcomeTone("update-available")).toBe("news");
+    expect(outcomeTone("pin-mismatch")).toBe("news");
+    expect(outcomeTone("channel-mismatch")).toBe("news");
+    expect(outcomeTone(null)).toBe("news");
+  });
+});
+
+describe("the processes still on an older version", () => {
+  const process = { pid: 7, version: "2.1.285", kind: "agent" as const, agentId: null, title: null, startedAt: "2026-10-07T09:00:00.000Z" };
+
+  it("says the list could not be had, not why, when it is unsupported", () => {
+    expect(staleProcessesText({ processListSupported: false, installedVersion: "2.1.292", staleProcesses: [] })).toBe(
+      "Running Claude Code processes could not be listed. Listing them works only on macOS.",
+    );
+  });
+
+  it("does not claim every process is current before the first check", () => {
+    expect(staleProcessesText({ processListSupported: true, installedVersion: null, staleProcesses: [] })).toBe(
+      "Not checked yet: the installed version is read at the first check.",
+    );
+  });
+
+  it("says every process is current only when the installed version is known and none is behind", () => {
+    expect(staleProcessesText({ processListSupported: true, installedVersion: "2.1.292", staleProcesses: [] })).toBe(
+      "Every running Claude Code process is on the installed version.",
+    );
+    expect(staleProcessesText({ processListSupported: true, installedVersion: "2.1.292", staleProcesses: [process] })).toBeNull();
   });
 });

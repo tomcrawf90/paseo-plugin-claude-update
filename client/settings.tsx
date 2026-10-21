@@ -156,7 +156,7 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
           />
           <SettingsSwitch
             label="Desktop notifications"
-            hint="A macOS notification after an update, after an update that failed, and after three failed checks in a row."
+            hint="A macOS notification for each new thing to know: an update that went in, a new version found and not installed, a pin or channel mismatch (each told once), an update that failed, and three failed checks in a row."
             value={values.desktopNotifications}
             disabled={saving}
             onValueChange={(desktopNotifications) => void apply({ desktopNotifications })}
@@ -175,7 +175,7 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
           <SettingsInput
             ref={pinRef}
             label="Pinned version"
-            hint="Hold the CLI at one exact version with “claude install <version>”. Empty follows the channel."
+            hint="One exact version to stay on; newer ones are not installed. When another is installed, the schedule with auto-update on, or Update now, moves to it with “claude install <version>”; otherwise you are told. Empty follows the channel."
             initialValue={values.pinnedVersion}
             placeholder="none"
             onChangeText={() => setDraftError(null)}
