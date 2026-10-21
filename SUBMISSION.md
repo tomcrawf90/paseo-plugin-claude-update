@@ -27,7 +27,7 @@ Sources, read 2026-10-21: getpaseo/plugins at `702e140` (README, REVIEW.md, BOTS
 | Description | `package.json` `description` | `paseo-plugin.json` `description` | The same sentence in both; `npm run lint:listings` fails if they differ |
 | Manifest keys | Any; `name`, `icon` and `media` are read if present | Only `id`, `requirements`, `build`, `description`; `name`, `icon` and `media` only when every minimum of the range is 0.11.0 or later | `id`, `description`, `requirements` (see 2) |
 | Overview page | `OVERVIEW.md` in the package, or one the reviewer writes. Must explain what the plugin installs, runs, reads and sends, and give the supported systems and Paseo versions; no install commands | Not used | `OVERVIEW.md`, in `files` |
-| Screenshots | At least one image of a visual plugin's interface, PNG, JPG, WebP or GIF (no SVG); the first is the card thumbnail. From the manifest's `media`, or as image addresses given in the submission. No size or count rule | Optional. Every file in `images/`, then images in the README from GitHub hosts, at most 8 | `images/01-status-update-ready.png` (thumbnail), `02-status-after-update.png`, `03-settings.png`, 2880×1800, shown in the README |
+| Screenshots | At least one image of a visual plugin's interface, PNG, JPG, WebP or GIF (no SVG); the first is the card thumbnail. From the manifest's `media`, or as image addresses given in the submission. No size or count rule | Optional. Every file in `images/`, then images in the README from GitHub hosts, at most 8, without exact duplicate addresses | `docs/screenshots/01-status-update-ready.png` (thumbnail), `02-status-after-update.png`, `03-settings.png`, 2880×1800, shown in the README by absolute address. Not in `images/`, whose addresses Paseo Cafe pins to a commit, so they would not match the README's and each screenshot would show twice |
 | Runtime dependencies | Need an npm shrinkwrap | Counted in the scan | None |
 | Code checks | A reviewer reads the package (REVIEW.md "Security review") | A static scan of the manifest and the modules reachable from the entries, at most 200 files and 2 MB, of the repository and of the npm package | `npm run lint:listings` runs the parts that can be run locally |
 | Licence, README, tests | Licence shown | README "Install" and "Limitations" quoted; `test` and `typecheck` scripts scored | MIT; both sections; both scripts |
@@ -77,7 +77,7 @@ After 0.2.1 is on npm. You need to be signed in to GitHub.
    ```bash
    C=$(git rev-list -n1 v0.2.1)
    for f in 01-status-update-ready 02-status-after-update 03-settings; do
-     echo "https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/$C/images/$f.png"
+     echo "https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/$C/docs/screenshots/$f.png"
    done
    ```
 
@@ -133,7 +133,7 @@ no new submission, but `package.json` on `main` must name the version npm has.
 | No symlinks, and no source file containing a synchronous process call, a shell `-c` or a command-line download tool (an older Paseo Cafe text rule, still in its repository) | Paseo Cafe |
 | `package.json` and the manifest have the same description; `repository` names the GitHub repository; the package name without `paseo-plugin-` is the manifest `id`; no runtime dependencies | Official directory |
 | `OVERVIEW.md` exists, is in `files`, and names no install command | Official directory |
-| `images/` holds only images, at most 8, each shown in the README; README has "Install" and "Limitations" sections; `LICENSE` exists; a released version; `test` and `typecheck` scripts | Both |
+| No `images/` folder; `docs/screenshots/` holds only images, at most 8, each shown in the README by its absolute address; every README link is an https address; README has "Install" and "Limitations" sections; `LICENSE` exists; a released version; `test` and `typecheck` scripts | Both |
 
 ## Could not be determined
 

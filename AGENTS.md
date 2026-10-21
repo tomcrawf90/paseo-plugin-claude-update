@@ -14,7 +14,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | --- | --- |
 | `paseo-plugin.json` | Manifest: `id`, `description`, `requirements.paseo`. Paseo Cafe rejects any other key while the minimum is below 0.11, and Paseo 0.10 refuses `name`, `icon` and `media`. The description is the same sentence as `package.json`'s. |
 | `OVERVIEW.md` | The official Paseo directory's page for the plugin, shipped in the package: what it installs, runs, reads and sends. No install commands in it. |
-| `images/` | The listing screenshots, made by `npm run screenshots`. Paseo Cafe shows every file here, so nothing but images; each is shown in the README. |
+| `docs/screenshots/` | The listing screenshots, made by `npm run screenshots`, each shown in the README by its raw.githubusercontent.com address on `main`. Not in `images/`: Paseo Cafe shows that folder's files as well as the README's images, so each would appear twice. |
 | `index.server.ts` | Daemon entry: wires real dependencies (process runner, fetch, files, clock) into the service and registers settings and RPCs. |
 | `server/updater.ts` | One check, start to finish (`runCheck`), plus the schedule arithmetic (`isDue`, `backoffMs`). All the decisions are here. |
 | `server/service.ts` | The timer, the one-check-at-a-time guard, and the status the UI reads. |
@@ -46,7 +46,7 @@ npm run typecheck
 npm test            # vitest; uses test/stub/claude, no network, no real install
 npm run lint:listings   # official directory and Paseo Cafe pre-check
 npm run check:compat    # against the minimum and the newest Paseo on npm (installs it in a temporary directory)
-npm run screenshots     # retake images/ (macOS, Chrome; starts its own throwaway daemon)
+npm run screenshots     # retake docs/screenshots/ (macOS, Chrome; starts its own throwaway daemon)
 npm run check:release   # package.json and the top CHANGELOG.md entry name the same version
 npm run verify      # all four
 npm pack --dry-run  # exactly what would be published

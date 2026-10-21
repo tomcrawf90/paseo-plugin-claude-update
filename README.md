@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/tomcrawf90/paseo-plugin-claude-update/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tomcrawf90/paseo-plugin-claude-update/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/paseo-plugin-claude-update)](https://www.npmjs.com/package/paseo-plugin-claude-update)
-[![License: MIT](https://img.shields.io/github/license/tomcrawf90/paseo-plugin-claude-update)](LICENSE)
+[![License: MIT](https://img.shields.io/github/license/tomcrawf90/paseo-plugin-claude-update)](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/LICENSE)
 
 A [Paseo](https://paseo.sh) plugin that keeps the Claude Code CLI up to date on the machine your
 Paseo daemon runs on. Its status page shows which running agents are still on an old version.
@@ -38,15 +38,15 @@ Taken from Paseo 0.12's own web app against a throwaway daemon with made-up data
 
 An update is waiting and auto-update is off, so the sidebar row says so:
 
-![The status page with an update waiting](images/01-status-update-ready.png)
+![The status page with an update waiting](https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/main/docs/screenshots/01-status-update-ready.png)
 
 After "Update now": the release notes, the command to go back, and the processes still on the old version:
 
-![The status page after an update](images/02-status-after-update.png)
+![The status page after an update](https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/main/docs/screenshots/02-status-after-update.png)
 
 The settings screen:
 
-![The settings screen](images/03-settings.png)
+![The settings screen](https://raw.githubusercontent.com/tomcrawf90/paseo-plugin-claude-update/main/docs/screenshots/03-settings.png)
 
 ## Install
 
@@ -197,18 +197,18 @@ npm run verify    # typecheck, tests, a local pre-check for the Paseo Cafe scann
 ```
 
 The tests use a stand-in `claude` (`test/stub/claude`) and never touch a real install or the
-network. See [AGENTS.md](AGENTS.md) for how to try the plugin against a throwaway home,
-[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [SECURITY.md](SECURITY.md) to
+network. See [AGENTS.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/AGENTS.md) for how to try the plugin against a throwaway home,
+[CONTRIBUTING.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/CONTRIBUTING.md) before opening a pull request, and [SECURITY.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/SECURITY.md) to
 report a security problem.
 
 **Versions and releases.** Versions follow [semantic versioning](https://semver.org) and are listed
-in [CHANGELOG.md](CHANGELOG.md). The version in `package.json` is the one source; every released
+in [CHANGELOG.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/CHANGELOG.md). The version in `package.json` is the one source; every released
 version is a git tag `vX.Y.Z` on `main`. Pushing that tag runs the release workflow, which checks
 the tag against `package.json` and the changelog, publishes to npm with a provenance statement and
 creates the GitHub release with the same tarball attached. A release is prepared with
 `npm run release:prepare -- <patch|minor|major>` on a branch; the steps are in
-[RELEASING.md](RELEASING.md), and listing on Paseo Cafe is in [SUBMISSION.md](SUBMISSION.md).
+[RELEASING.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/RELEASING.md), and listing on Paseo Cafe is in [SUBMISSION.md](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/SUBMISSION.md).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/tomcrawf90/paseo-plugin-claude-update/blob/main/LICENSE)

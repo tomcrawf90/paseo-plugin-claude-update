@@ -74,7 +74,7 @@ git push origin v0.2.2
 version that already has a dated entry, an empty entry and a version lower than the current one.
 
 Before step 3, if a screen changed, run `npm run screenshots` (macOS with Chrome; it starts its own
-throwaway daemon) and commit the new `images/`. Both listings are covered in
+throwaway daemon) and commit the new `docs/screenshots/`. Both listings are covered in
 [SUBMISSION.md](SUBMISSION.md): after a release, the official directory opens its own update pull
 request and Paseo Cafe rescans npm, so nothing is submitted again. The official listing's images
 stay pinned to the commit they were given for until its `listing.media` is changed by a pull request
