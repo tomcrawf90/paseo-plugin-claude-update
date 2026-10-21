@@ -62,13 +62,19 @@ export async function readChannelVersion(fetchText: FetchText, channel: Channel)
 /**
  * Claude Code's own channel, which decides what `claude update` installs:
  * `autoUpdatesChannel` in `~/.claude/settings.json`, `latest` when unset.
- * Read only; null when the file is there but cannot be understood.
+ * Read only; null when the file is there but cannot be read or understood,
+ * so a check goes on without it.
  */
 export async function readClaudeChannel(
   readFile: (path: string) => Promise<string | null>,
   home: string,
 ): Promise<string | null> {
-  const text = await readFile(join(home, ".claude", "settings.json"));
+  let text: string | null;
+  try {
+    text = await readFile(join(home, ".claude", "settings.json"));
+  } catch {
+    return null;
+  }
   if (text === null) return "latest";
   try {
     const parsed: unknown = JSON.parse(text);

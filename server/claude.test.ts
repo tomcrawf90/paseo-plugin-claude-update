@@ -79,6 +79,10 @@ describe("readClaudeChannel", () => {
     expect(await read('{"autoUpdatesChannel":3}')).toBeNull();
     expect(await read("[]")).toBe("latest");
   });
+  it("is null when the file is there but cannot be read", async () => {
+    const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+    expect(await readClaudeChannel(async () => Promise.reject(denied), "/home/u")).toBeNull();
+  });
 });
 
 describe("output helpers", () => {

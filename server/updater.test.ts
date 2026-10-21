@@ -559,6 +559,20 @@ describe("channel", () => {
     expect(state.claudeChannel).toBe("stable");
     expect(h.fetched).toEqual(["https://downloads.claude.ai/claude-code-releases/stable"]);
   });
+
+  it("goes on, as for a file it cannot understand, when Claude Code's settings cannot be read", async () => {
+    const garbled = harness("2.1.280", "2.1.292");
+    garbled.files["/home/u/.claude/settings.json"] = "{not json";
+    const expected = await runCheck(garbled.deps, settingsWith(), "schedule");
+    const h = harness("2.1.280", "2.1.292");
+    h.deps.readFile = async () => {
+      throw Object.assign(new Error("EISDIR: illegal operation on a directory, read"), { code: "EISDIR" });
+    };
+    const state = await runCheck(h.deps, settingsWith(), "schedule");
+    expect(state.claudeChannel).toBeNull();
+    expect(state).toEqual(expected);
+    expect(h.store.history).toHaveLength(1);
+  });
 });
 
 describe("schedule arithmetic", () => {
