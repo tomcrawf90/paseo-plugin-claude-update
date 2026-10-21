@@ -59,7 +59,7 @@ git switch -c release/0.2.2 origin/main
 npm run release:prepare -- patch
 
 # 3. Check, commit, open the pull request
-npm run verify && npm pack --dry-run
+npm run verify && npm run check:compat && npm pack --dry-run
 git commit -am "Release 0.2.2"
 git push -u origin release/0.2.2
 gh pr create --fill
@@ -83,6 +83,23 @@ to getpaseo/plugins.
 Which number: a fix is a patch, a new feature or setting is a minor, and a change that breaks an
 installed plugin's settings or drops a supported Paseo version is a major. A published version is
 never reused or moved; a bad release is followed by a new one.
+
+## When Paseo changes
+
+`.github/workflows/compat.yml` runs `npm run check:compat` every day, and on pull requests that touch
+the range or the check: against the lowest Paseo the range admits and the newest `@getpaseo/cli` on
+npm, betas included. For each it reports whether `requirements.paseo` admits the version (by Paseo's
+own test), whether the plugin typechecks against that `@getpaseo/plugin`, and whether a throwaway
+daemon of that version loads the plugin and answers its RPCs. A failed daily run opens an issue (or
+comments on the open one).
+
+| The summary says | Do |
+| --- | --- |
+| works, but `requirements.paseo` refuses it | Usually a beta of the next minor. Raise the `<` bound in `paseo-plugin.json` to the minor after it, update the README, SUBMISSION.md and AGENTS.md, and release a patch once that version is out. |
+| broken | The plugin needs a change for that Paseo. Fix it in a pull request; `npm run check:compat -- --paseo <version>` repeats the check locally. |
+
+GitHub switches a scheduled workflow off after 60 days without a commit to the repository. A merged
+Dependabot pull request counts; if the Actions page shows the workflow disabled, switch it on there.
 
 ## What the workflow does
 
