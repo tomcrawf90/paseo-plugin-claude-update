@@ -170,7 +170,7 @@ the 0.12.0 status page and settings screen in its own web UI) and typechecked ag
 | macOS notification raised from the daemon | Not confirmed. One may have been raised during the throwaway-daemon run; errors from it are swallowed by design and nobody was watching the screen. |
 | Listing old processes | Verified through a live 0.10.3 daemon on 2026-10-07 (`status.get`): supported, and it reported the one process on an old version (a leftover 2.1.269) while the ten on the installed version were not listed. A home directory with a space in it is covered by tests only. |
 | A manual look-only check | Verified through a live daemon the same day: `status.check` with `apply: false` reported 2.1.285 against 2.1.292 and ran only `claude --version`. |
-| The release workflow | Never run (2026-10-07): no tag has been pushed and nothing is on npm. `actionlint` passes and the checks it calls are tested; publishing by token and by trusted publisher are both unseen. See "Not verified" in `RELEASING.md`. |
+| The release workflow | Run once, for `v0.2.1` on 2026-10-21: everything up to `npm publish` passed, and npm refused the token (E403), so nothing is on npm. Publishing by token and by trusted publisher, and the GitHub release job, are unseen. See "Not verified" in `RELEASING.md`. |
 | Linux, Windows | Untested. The process list and notifications are macOS only by design. |
 | Homebrew, WinGet, npm installs of Claude Code | Not supported; `claude update` is for the native installer. |
 | An update cut short by a plugin reload or daemon stop | Not tested. The CLI is assumed to leave the old version in place. |

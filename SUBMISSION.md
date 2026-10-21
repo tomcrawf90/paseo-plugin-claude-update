@@ -50,9 +50,9 @@ release steps are in [RELEASING.md](RELEASING.md).
 | # | Step | Done |
 | --- | --- | --- |
 | 1 | GitHub repository, public | yes |
-| 2 | Release pull request for 0.2.1, merged | no |
-| 3 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md) | no |
-| 4 | Tag `v0.2.1` pushed from `main`; the Release workflow ended green | no |
+| 2 | Release pull request for 0.2.1, merged | yes (#10, 2026-10-21) |
+| 3 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md) | set, but npm refused them (E403, 2026-10-21) |
+| 4 | Tag `v0.2.1` pushed from `main`; the Release workflow ended green | pushed on 71e405b; the run failed at publishing, to be tagged again |
 | 5 | `npm view paseo-plugin-claude-update@0.2.1` answers, and the package installs in a throwaway daemon | no |
 
 `npm pack --dry-run` on 2026-10-21: 29 files, 40.5 kB packed. The manifest, the two entries,
