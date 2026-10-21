@@ -28,6 +28,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
 | `test/listing-check.mjs` | Local copy of both listings' rules that can be checked here (`npm run lint:listings`). |
 | `SUBMISSION.md` | What each listing needs and the exact submission for each. |
+| `scripts/compat.mjs`, `.github/workflows/compat.yml` | The Paseo compatibility check (`npm run check:compat`): the range, a typecheck against the SDK and a throwaway daemon, for the minimum and the newest Paseo on npm. Daily in CI, outside `CI passed`; a failed run on main opens an issue. |
 | `scripts/daemon.mjs`, `scripts/screenshots.mjs`, `test/stub/fake-ps/` | A throwaway daemon of any Paseo version with the plugin installed and the stand-in CLI; the screenshot run on top of it (Paseo's web app in headless Chrome, a made-up process list, the host name "Demo Mac"). Not published, never run in CI. |
 | `scripts/release.mjs` | The release checks (`check`, `unpublished`, `notes`) and the version bump (`prepare`). Plain Node, no dependencies; `scripts/release.test.mjs` tests it. Not published. |
 | `.github/workflows/ci.yml` | Verify on Linux and macOS with Node 22 and 24, lint the workflows, and one `CI passed` check for branch protection. |
@@ -44,6 +45,7 @@ npm install
 npm run typecheck
 npm test            # vitest; uses test/stub/claude, no network, no real install
 npm run lint:listings   # official directory and Paseo Cafe pre-check
+npm run check:compat    # against the minimum and the newest Paseo on npm (installs it in a temporary directory)
 npm run screenshots     # retake images/ (macOS, Chrome; starts its own throwaway daemon)
 npm run check:release   # package.json and the top CHANGELOG.md entry name the same version
 npm run verify      # all four
@@ -145,7 +147,8 @@ If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plug
 oldest version the plugin has been typechecked and run against. No separate prerelease branch is needed:
 Paseo (`assertPluginCompatibility` in `packages/protocol/src/plugin-requirements.ts`, the same in 0.10.3
 and 0.12.0) accepts a version when either it or its `major.minor.patch` satisfies the range, so
-`0.12.0-beta.1` passes as `0.12.0`. The app runs the same check before it loads a plugin's client code. The `<0.13.0` bound was raised on
+`0.12.0-beta.1` passes as `0.12.0`. The app runs the same check before it loads a plugin's client code. The daily compatibility check (RELEASING.md, "When
+Paseo changes") says when a new Paseo needs the bound raised or the plugin changed. The `<0.13.0` bound was raised on
 2026-10-20 after the plugin ran in throwaway 0.11.4 and 0.12.0 daemons (look, update, release notes;
 the 0.12.0 status page and settings screen in its own web UI) and typechecked against
 `@getpaseo/plugin` 0.12.0, whose types are the same as 0.11.4's. Raise it again once it has run on 0.13.

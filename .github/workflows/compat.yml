@@ -1,0 +1,98 @@
+name: Paseo compatibility
+
+# Runs the plugin against the lowest Paseo its range admits and the newest
+# @getpaseo/cli on npm, prereleases included (scripts/compat.mjs): the range,
+# a typecheck against that SDK, and a throwaway daemon that loads the plugin.
+# Daily, so that a new Paseo beta is noticed before its release reaches users.
+# Not part of "CI passed": a new Paseo must not block unrelated pull requests.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - paseo-plugin.json
+      - package.json
+      - package-lock.json
+      - index.server.ts
+      - index.client.tsx
+      - client/**
+      - server/**
+      - shared/**
+      - test/stub/**
+      - scripts/compat.mjs
+      - scripts/daemon.mjs
+      - .github/workflows/compat.yml
+  pull_request:
+    paths:
+      - paseo-plugin.json
+      - package.json
+      - package-lock.json
+      - index.server.ts
+      - index.client.tsx
+      - client/**
+      - server/**
+      - shared/**
+      - test/stub/**
+      - scripts/compat.mjs
+      - scripts/daemon.mjs
+      - .github/workflows/compat.yml
+
+permissions: {}
+
+# A push to main must not cancel a running daily check, whose failure would then go unreported.
+concurrency:
+  group: compat-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  compat:
+    name: Paseo ${{ matrix.paseo }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        paseo: [minimum, newest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check:compat -- --paseo "$PASEO"
+        env:
+          PASEO: ${{ matrix.paseo }}
+
+  # GitHub mails a scheduled run's failure only to whoever last changed the
+  # schedule, so a failed run on main (daily or after a push) opens, or
+  # comments on, an issue.
+  report:
+    name: Report a failed run on main
+    needs: compat
+    if: failure() && (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Paseo compatibility check failed"
+          body="The check failed on main: $RUN_URL. Its summary says whether the range needs raising or the plugin needs a fix (RELEASING.md, \"When Paseo changes\")."
+          number="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
