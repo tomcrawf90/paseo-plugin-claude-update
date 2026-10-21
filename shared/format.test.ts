@@ -238,7 +238,7 @@ describe("the processes still on an older version", () => {
 
   it("says the list could not be had, not why, when it is unsupported", () => {
     expect(staleProcessesText({ processListSupported: false, installedVersion: "2.1.292", staleProcesses: [] })).toBe(
-      "Running Claude Code processes could not be listed. Listing them works only on macOS.",
+      "Running Claude Code processes could not be listed (this needs macOS and its ps command).",
     );
   });
 

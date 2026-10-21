@@ -173,7 +173,7 @@ function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles 
           Pinned at {settings.values.pinnedVersion} in this plugin's settings, so newer versions are not installed.{" "}
           {on && settings.values.enabled
             ? "If another version is installed, the next scheduled check moves to the pinned one."
-            : "If another version is installed you are told, and Update now moves to the pinned one."}
+            : "If another version is installed, the next check tells you, and Update now moves to the pinned one."}
         </Text>
       ) : null}
       <Text style={styles.muted}>{AUTO_UPDATE_SAFETY}</Text>

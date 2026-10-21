@@ -29,7 +29,7 @@ export function outcomeTone(outcome: Outcome | null): "good" | "bad" | "news" {
  */
 export function staleProcessesText(status: Pick<Status, "processListSupported" | "installedVersion" | "staleProcesses">): string | null {
   if (!status.processListSupported) {
-    return "Running Claude Code processes could not be listed. Listing them works only on macOS.";
+    return "Running Claude Code processes could not be listed (this needs macOS and its ps command).";
   }
   if (status.installedVersion === null) return "Not checked yet: the installed version is read at the first check.";
   if (status.staleProcesses.length === 0) return "Every running Claude Code process is on the installed version.";
