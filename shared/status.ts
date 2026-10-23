@@ -72,6 +72,11 @@ export const statusSchema = z.object({
   attention: attentionSchema.nullable(),
   /** The schedule is on and installs what it finds: an update that is waiting needs nothing from the user. */
   autoInstall: z.boolean(),
+  /**
+   * The sidebar row is wanted: "Show in the sidebar" is on, or the settings
+   * could not be read. A host without the switch has always had the row.
+   */
+  showInSidebar: z.boolean().default(true),
   checking: z.boolean(),
   /** Null when nothing is running; `checking` is true exactly when this is set. */
   activity: activitySchema.nullable(),

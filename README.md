@@ -22,7 +22,7 @@ Claude Code** it also runs the CLI's own updater, `claude update`, and tells you
 | --- | --- |
 | Checks | Every 4 hours by default, it compares `claude --version` with the version the release channel points at. |
 | Updates | Off until you choose it. With "Auto-update Claude Code" on, the scheduled check runs `claude update` when the CLI is behind, then reads the version again to confirm. Until then it only tells you; "Update now" installs on request. |
-| Reports | An update that went in: on its status page and in the history there, with a macOS notification. Something you have to act on (an update waiting with auto-update off, a failure): named on its sidebar row as well. Everything goes to a log file. |
+| Reports | An update that went in: on its status page and in the history there, with a macOS notification. Something you have to act on (an update waiting with auto-update off, a failure): named on its sidebar row as well, unless the row is switched off. Everything goes to a log file. |
 | Lists old processes | On the status page: running Claude Code processes (Paseo agents and Claude's own background daemon) that are still on an older version. It never restarts or interrupts them. |
 | Shows release notes | On the status page: the notes for the update that is waiting, or else for the last update, with a link to the full notes for every release. |
 | Shows that it is working | Its status page says when it last checked (how long ago and the clock time), how that ended, when the version last changed, and when it checks next, and has a "Check now" button. The settings screen has the same lines. |
@@ -81,7 +81,9 @@ settings, to have it update on the schedule.
 "Check now" button (it only looks) and "Update now" (it installs). The same lines and "Check now"
 are on the settings screen, under **Settings → Plugins → Claude Code updates**. The Command Center
 (⌘K) has "Claude Code updates: open status", "Claude Code updates: check now" and "Claude Code
-updates: settings". The row's title changes only when:
+updates: settings". With **Show in the sidebar** off there is no row, and the Command Center is the
+way to the status page and its "Update now" (on a phone, where there may be no Command Center, turn the
+switch back on under Settings → Plugins to reach the page). The row's title changes only when:
 
 | The row reads | When | It goes back to "Claude Code updates" when |
 | --- | --- | --- |
@@ -128,6 +130,7 @@ Settings are per daemon host, under **Settings → Plugins → Claude Code updat
 | Pinned version | empty | An exact version such as `2.1.285`. While set, newer versions are not installed. When another version is installed, a scheduled check with auto-update on, or "Update now", moves to the pin with `claude install <version>`; otherwise you are told ("Claude pin mismatch"). |
 | Path to claude | empty | Empty looks in `~/.local/bin/claude`, then on the daemon's `PATH`. |
 | Desktop notifications | on | A macOS notification for each new thing to know: an update that went in, a new version found and not installed, a pin or channel mismatch (each told once), an update that failed, and three failed checks in a row. |
+| Show in the sidebar | on | The "Claude Code updates" sidebar row. Off takes it away, with the news its title gives; it comes back as soon as the switch is on again, without restarting Paseo. Everything else stays: the notices on the status page, desktop notifications, the settings screen with its "Checks" lines and "Check now", and the Command Center items, which are then the way to the status page and "Update now". With desktop notifications off as well, news is shown only on the status page, which says so. The same switch is on the status page. With the row off it may still show for a moment while the app starts, until the plugin has read the setting from the host, and it stays while the host cannot be reached. |
 
 **Channel.** `claude update` follows Claude Code's own channel, the `autoUpdatesChannel` key in
 `~/.claude/settings.json` (`latest` when unset), not this plugin's setting. If the two differ the

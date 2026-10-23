@@ -12,9 +12,9 @@ once you allow it, installs it with the CLI's own updater.
 
 | | |
 | --- | --- |
-| A sidebar row | "Claude Code updates" opens the status page. Its title names something to act on: "Claude update ready", "Claude update failed", "Claude pin mismatch", "Claude channel issue". |
-| A status page | When the last check was, how it ended, when the next one is, "Check now" (looks only) and "Update now" (installs). The auto-update switch, the installed and target versions, the release notes for the update, the command to go back, and the Claude Code processes still on an older version. |
-| A settings screen | The same "Checks" lines and "Check now", the auto-update switch, the schedule, the channel, a version pin, the path to `claude` and desktop notifications. |
+| A sidebar row | "Claude Code updates" opens the status page. Its title names something to act on: "Claude update ready", "Claude update failed", "Claude pin mismatch", "Claude channel issue". It can be switched off ("Show in the sidebar"); the Command Center then opens the status page. |
+| A status page | When the last check was, how it ended, when the next one is, "Check now" (looks only) and "Update now" (installs). The auto-update and sidebar switches, the installed and target versions, the release notes for the update, the command to go back, and the Claude Code processes still on an older version. |
+| A settings screen | The same "Checks" lines and "Check now", the auto-update switch, the schedule, the channel, a version pin, the path to `claude`, desktop notifications and the sidebar row. |
 | Command Center items | Open the status page, check now, open the settings. |
 
 ## Installing software

@@ -227,6 +227,7 @@ export function startService(
         rollbackCommand: state.previousVersion === null ? null : `claude install ${state.previousVersion}`,
         attention: state.attention,
         autoInstall: settings !== null && settings.enabled && autoUpdateOn(settings),
+        showInSidebar: settings === null || settings.showInSidebar,
         checking: activity !== null,
         activity,
         staleProcesses: stale,

@@ -1,6 +1,6 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 
-import { onStatus, publishStatus } from "./client/bus";
+import { onStatus, publishedCount, publishStatus } from "./client/bus";
 import { UpdateSettingsScreen } from "./client/settings";
 import { createSidebarRow } from "./client/sidebar";
 import { StatusSurface } from "./client/status";
@@ -19,20 +19,26 @@ export default function contribute(client: PluginClientContext) {
     Component: UpdateSettingsScreen,
   });
 
-  // The sidebar row is always there, as the way in to the status page: it
-  // is added before the first status read, so it is there with the host away
-  // too. It reads as the news while a status has some, and goes back to its
-  // plain title when the news is dismissed or resolved.
+  // The sidebar row is the way in to the status page: it is added before the
+  // first status read, so it is there with the host away too. It reads as the
+  // news while a status has some, and goes back to its plain title when the
+  // news is dismissed or resolved. With "Show in the sidebar" off it goes at
+  // the first status read and comes back at the first one with it on; the
+  // screens read the status again as soon as the switch is saved.
   let disposed = false;
   const row = createSidebarRow(({ title, icon }) => client.addSidebarItem({ id: "status", title, icon, surface: SURFACE_ID }));
   row.show(QUIET_ROW);
   const unsubscribe = onStatus((status) => {
-    if (!disposed) row.show(sidebarRow(status) ?? QUIET_ROW);
+    if (!disposed) row.show(status.showInSidebar ? (sidebarRow(status) ?? QUIET_ROW) : null);
   });
 
   async function refresh(): Promise<void> {
     try {
-      publishStatus(await client.rpc(getStatus, {}));
+      const before = publishedCount();
+      const status = await client.rpc(getStatus, {});
+      // A screen or the Command Center published a status while this read was
+      // out, perhaps one read after a switch was saved: this one may be older.
+      if (publishedCount() === before) publishStatus(status);
     } catch {
       // The host is away or the plugin is restarting; the next round tries again.
     }

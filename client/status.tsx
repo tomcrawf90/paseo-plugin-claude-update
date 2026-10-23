@@ -1,5 +1,5 @@
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
+import type { PluginSurfaceProps, SettingsState } from "@getpaseo/plugin/client";
 import { openExternalUrl, useRpc, useSettings } from "@getpaseo/plugin/client";
 import { ScrollView, useToast } from "@getpaseo/plugin/client/react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -26,12 +26,20 @@ import {
   AUTO_UPDATE_ON,
   AUTO_UPDATE_SAFETY,
   autoUpdateOn,
+  SIDEBAR_LABEL,
+  SIDEBAR_OFF,
+  SIDEBAR_ON,
+  SIDEBAR_QUIET,
   updateSettings,
   withAutoUpdate,
 } from "../shared/settings";
 import { dismissAttention, type ClaudeProcess, type Status } from "../shared/status";
 import { CHECK_NOW_HINT, type RunResult } from "./activity";
-import { STATUS_QUERY_KEY, useCheck } from "./check";
+import { STATUS_QUERY_KEY, useCheck, useRefreshStatus } from "./check";
+import { saveShowInSidebar } from "./sidebar";
+
+/** The plugin's settings, read once for the page so both switches wait for each other's save. */
+type Settings = SettingsState<typeof updateSettings.schema>;
 
 function useStyles(theme: PluginTheme, compact: boolean) {
   return useMemo(
@@ -109,12 +117,55 @@ function processLabel(process: ClaudeProcess): string {
   return "Other Claude Code process";
 }
 
+/** A titled on/off switch, as the cards on this page draw it. */
+function Toggle({
+  theme,
+  styles,
+  label,
+  state,
+  on,
+  disabled,
+  onPress,
+}: {
+  theme: PluginTheme;
+  styles: Styles;
+  label: string;
+  state: string;
+  on: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.toggleRow}>
+      <Text style={styles.toggleTitle}>{label}</Text>
+      <Text style={styles.toggleState}>{state}</Text>
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityLabel={label}
+        accessibilityState={{ checked: on, disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        style={[
+          styles.track,
+          {
+            alignItems: on ? "flex-end" : "flex-start",
+            backgroundColor: on ? theme.colors.accent : theme.colors.surface2,
+            borderColor: on ? theme.colors.accent : theme.colors.border,
+          },
+          disabled ? styles.disabled : null,
+        ]}
+      >
+        <View style={[styles.knob, { backgroundColor: on ? theme.colors.accentForeground : theme.colors.foregroundMuted }]} />
+      </Pressable>
+    </View>
+  );
+}
+
 /**
  * The "Auto-update Claude Code" switch, on the status page so it is one
  * click away. It is the same setting as the one on the settings screen.
  */
-function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles }) {
-  const settings = useSettings(updateSettings);
+function AutoUpdateCard({ theme, styles, settings }: { theme: PluginTheme; styles: Styles; settings: Settings }) {
   const toast = useToast();
 
   if (settings.status === "error" || settings.status === "invalid") {
@@ -140,28 +191,15 @@ function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles 
 
   return (
     <View style={[styles.card, on ? { borderColor: theme.colors.accent } : null]}>
-      <View style={styles.toggleRow}>
-        <Text style={styles.toggleTitle}>{AUTO_UPDATE_LABEL}</Text>
-        <Text style={styles.toggleState}>{!ready ? "…" : settings.saving ? "Saving…" : on ? "On" : "Off"}</Text>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityLabel={AUTO_UPDATE_LABEL}
-          accessibilityState={{ checked: on, disabled: off }}
-          disabled={off}
-          onPress={() => void flip()}
-          style={[
-            styles.track,
-            {
-              alignItems: on ? "flex-end" : "flex-start",
-              backgroundColor: on ? theme.colors.accent : theme.colors.surface2,
-              borderColor: on ? theme.colors.accent : theme.colors.border,
-            },
-            off ? styles.disabled : null,
-          ]}
-        >
-          <View style={[styles.knob, { backgroundColor: on ? theme.colors.accentForeground : theme.colors.foregroundMuted }]} />
-        </Pressable>
-      </View>
+      <Toggle
+        theme={theme}
+        styles={styles}
+        label={AUTO_UPDATE_LABEL}
+        state={!ready ? "…" : settings.saving ? "Saving…" : on ? "On" : "Off"}
+        on={on}
+        disabled={off}
+        onPress={() => void flip()}
+      />
       {ready ? <Text style={styles.value}>{on ? AUTO_UPDATE_ON : AUTO_UPDATE_OFF}</Text> : null}
       {ready && on && !settings.values.enabled ? (
         <Text style={{ color: theme.colors.statusWarning, fontSize: 13 }}>
@@ -177,6 +215,47 @@ function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles 
         </Text>
       ) : null}
       <Text style={styles.muted}>{AUTO_UPDATE_SAFETY}</Text>
+    </View>
+  );
+}
+
+/**
+ * The "Show in the sidebar" switch, beside the auto-update one. It is the
+ * same setting as the one on the settings screen. Once it is saved the status
+ * is read again, so the row goes or comes back at once.
+ */
+function SidebarCard({ theme, styles, settings }: { theme: PluginTheme; styles: Styles; settings: Settings }) {
+  const toast = useToast();
+  const refreshStatus = useRefreshStatus();
+
+  // A settings file that cannot be read is told by the auto-update card above.
+  if (settings.status === "error" || settings.status === "invalid") return null;
+
+  const ready = settings.status === "ready";
+  const on = ready && settings.values.showInSidebar;
+  const off = !ready || settings.saving;
+  async function flip(): Promise<void> {
+    if (settings.status !== "ready") return;
+    const { revision } = settings;
+    const saved = await saveShowInSidebar((values) => settings.save(values, revision), settings.values, !on, refreshStatus);
+    if (!saved) toast.error("Could not save the setting.");
+  }
+
+  return (
+    <View style={styles.card}>
+      <Toggle
+        theme={theme}
+        styles={styles}
+        label={SIDEBAR_LABEL}
+        state={!ready ? "…" : settings.saving ? "Saving…" : on ? "On" : "Off"}
+        on={on}
+        disabled={off}
+        onPress={() => void flip()}
+      />
+      {ready ? <Text style={styles.value}>{on ? SIDEBAR_ON : SIDEBAR_OFF}</Text> : null}
+      {ready && !on && !settings.values.desktopNotifications ? (
+        <Text style={{ color: theme.colors.statusWarning, fontSize: 13 }}>{SIDEBAR_QUIET}</Text>
+      ) : null}
     </View>
   );
 }
@@ -251,6 +330,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
   const queryClient = useQueryClient();
   const dismiss = useRpc(dismissAttention);
   const check = useCheck();
+  const settings = useSettings(updateSettings);
   const { busy, active, checkLabel, updateLabel, line } = check.view;
   const { result, now } = check;
 
@@ -359,7 +439,8 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
         <Text style={styles.muted}>{CHECK_NOW_HINT}</Text>
       </View>
 
-      <AutoUpdateCard theme={theme} styles={styles} />
+      <AutoUpdateCard theme={theme} styles={styles} settings={settings} />
+      <SidebarCard theme={theme} styles={styles} settings={settings} />
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Versions</Text>

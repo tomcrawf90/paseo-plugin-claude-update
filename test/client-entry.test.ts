@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 
-import { checkNow, getStatus, type Status } from "../shared/status";
+import { publishStatus } from "../client/bus";
+import { checkNow, getStatus, statusSchema, type Status } from "../shared/status";
 
 // The entry pulls in the screens, which import the host's modules. Nothing
 // here renders them, so empty stand-ins are enough to load the entry.
@@ -29,6 +30,7 @@ const QUIET: Status = {
   rollbackCommand: null,
   attention: null,
   autoInstall: false,
+  showInSidebar: true,
   checking: false,
   activity: null,
   staleProcesses: [],
@@ -240,6 +242,72 @@ describe("the plugin in the app", () => {
     expect(titles(fake)).toEqual(["Claude update ready"]);
     expect(warn).toHaveBeenCalledWith("[claude-update] the check could not be run:", expect.any(Error));
     warn.mockRestore();
+  });
+
+  it("has no row once the status says the row is switched off, news or not, and is still reachable from the Command Center", async () => {
+    const fake = app({ status: { ...AVAILABLE, showInSidebar: false } });
+    load(fake);
+    await settle();
+    expect(fake.rows).toEqual([]);
+    await fake.select("open-status");
+    await fake.select("open-settings");
+    expect(fake.opened).toEqual(["surface:status", "settings:settings"]);
+    fake.answers.check = { ...FAILED, showInSidebar: false };
+    await fake.select("check-now");
+    await settle();
+    expect(fake.rows).toEqual([]);
+  });
+
+  it("takes the row away and brings it back at the next status a screen reads, without a restart", async () => {
+    const fake = app({ status: AVAILABLE });
+    load(fake);
+    await settle();
+    expect(titles(fake)).toEqual(["Claude update ready"]);
+    // What a screen publishes when it reads the status again after the switch is saved.
+    publishStatus({ ...AVAILABLE, showInSidebar: false });
+    await settle();
+    expect(fake.rows).toEqual([]);
+    publishStatus(AVAILABLE);
+    await settle();
+    expect(titles(fake)).toEqual(["Claude update ready"]);
+    publishStatus({ ...QUIET, showInSidebar: false });
+    publishStatus(QUIET);
+    await settle();
+    expect(fake.rows).toEqual([QUIET_ROW]);
+    expect(fake.mostRows).toBe(1);
+  });
+
+  it("drops its own read when a newer status was published while it was out", async () => {
+    vi.useFakeTimers();
+    try {
+      const fake = app({ status: QUIET });
+      const answer = fake.rpc;
+      let release: (() => void) | null = null;
+      load(fake);
+      await vi.advanceTimersByTimeAsync(5);
+      expect(fake.rows).toEqual([QUIET_ROW]);
+      // The next 60 s read reads the settings while the row is still wanted, and is slow to answer.
+      fake.rpc = (contract, input) =>
+        new Promise((resolve) => {
+          release = () => resolve(answer(contract, input));
+        });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(release).not.toBeNull();
+      // Meanwhile the switch is saved off and a screen publishes what it read after that.
+      publishStatus({ ...QUIET, showInSidebar: false });
+      await vi.advanceTimersByTimeAsync(5);
+      expect(fake.rows).toEqual([]);
+      release!();
+      await vi.advanceTimersByTimeAsync(5);
+      expect(fake.rows).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the row for a host that does not report the switch", () => {
+    const { showInSidebar: _, ...older } = QUIET;
+    expect(statusSchema.parse(older).showInSidebar).toBe(true);
   });
 
   it("changes nothing after it has been stopped", async () => {

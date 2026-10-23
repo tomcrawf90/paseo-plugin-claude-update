@@ -1,6 +1,6 @@
 import { useRpc } from "@getpaseo/plugin/client";
 import { useToast } from "@getpaseo/plugin/client/react-native";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { checkNow, getStatus, type Status } from "../shared/status";
@@ -27,6 +27,24 @@ export interface Check {
   now: number;
   /** "Check now" (`check`, looks only) or "Update now" (`update`, installs). */
   run(action: Action): void;
+}
+
+/**
+ * Reads the status again now and publishes what it reads, even when that is
+ * the same as before: a screen calls it after saving a setting the status
+ * reports, so the sidebar row follows at once, and the entry drops a read of
+ * its own that began before the save. A read that fails publishes nothing.
+ */
+export async function refreshStatus(queryClient: QueryClient): Promise<void> {
+  const before = queryClient.getQueryState(STATUS_QUERY_KEY)?.dataUpdateCount ?? 0;
+  await queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY });
+  const state = queryClient.getQueryState<Status>(STATUS_QUERY_KEY);
+  if (state?.data !== undefined && state.dataUpdateCount > before) publishStatus(state.data);
+}
+
+export function useRefreshStatus(): () => void {
+  const queryClient = useQueryClient();
+  return () => void refreshStatus(queryClient);
 }
 
 /**
