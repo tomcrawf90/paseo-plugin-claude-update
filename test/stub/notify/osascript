@@ -1,0 +1,6 @@
+#!/bin/sh
+# A stand-in for macOS `osascript`, for the throwaway daemon: it shows
+# nothing and appends the script it was given (the `display notification`
+# line) to STUB_CLAUDE_DIR/notifications.
+shift
+printf '%s\n' "$*" >> "${STUB_CLAUDE_DIR:?set STUB_CLAUDE_DIR}/notifications"

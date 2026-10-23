@@ -1,5 +1,5 @@
 // A throwaway Paseo daemon with this plugin installed, for the compatibility
-// check and the screenshots. Everything lives under one temporary directory:
+// check, the screenshots and the UI walk. Everything lives under one temporary directory:
 // the Paseo CLI of the chosen version, the daemon's home, a home directory
 // with the stand-in CLI (test/stub/claude) as `claude`, and its state. The
 // real Claude Code install, ~/.paseo and the running daemon are never used.
@@ -70,9 +70,13 @@ export async function copyPlugin(target, range) {
  * `work`, and installs the plugin from `pluginDir`. Options:
  *   claude: { version, latest }   the stand-in CLI's installed and newest version
  *   fakeProcesses: true           put test/stub/fake-ps first on PATH (made-up process list)
+ *   recordNotifications: true     turn desktop notifications on, with test/stub/notify on PATH before
+ *                                 the system's: each one goes to stubDir/notifications, none to the screen
+ *   settings: { … }               plugin settings written before the install (settings version 1);
+ *                                 desktopNotifications in it is overridden by recordNotifications
  *   webUi: true                   serve Paseo's web app on the daemon's port
  */
-export async function startDaemon({ prefix, work, pluginDir, claude = { version: "2.1.303", latest: "2.1.306" }, fakeProcesses = false, webUi = false }) {
+export async function startDaemon({ prefix, work, pluginDir, claude = { version: "2.1.303", latest: "2.1.306" }, fakeProcesses = false, recordNotifications = false, settings = {}, webUi = false }) {
   const port = await freePort();
   const host = `127.0.0.1:${port}`;
   const home = join(work, "home");
@@ -88,11 +92,12 @@ export async function startDaemon({ prefix, work, pluginDir, claude = { version:
   const config = { version: 1, daemon: { listen: host, relay: { enabled: false } }, pluginsEnabled: true };
   if (webUi) config.features = { webUi: { enabled: true } };
   await writeFile(join(paseoHome, "config.json"), `${JSON.stringify(config)}\n`);
-  // No desktop notification from a throwaway daemon.
-  await writeFile(join(paseoHome, "plugin-settings", "claude-update", "update.json"), '{"version":1,"values":{"desktopNotifications":false}}\n');
+  // No desktop notification from a throwaway daemon reaches the screen.
+  const values = { ...settings, desktopNotifications: recordNotifications };
+  await writeFile(join(paseoHome, "plugin-settings", "claude-update", "update.json"), `${JSON.stringify({ version: 1, values })}\n`);
 
   const paseoBin = join(prefix, "node_modules", ".bin", "paseo");
-  const path = [fakeProcesses ? join(repoRoot, "test", "stub", "fake-ps") : null, join(process.execPath, ".."), "/usr/bin", "/bin", "/usr/sbin", "/sbin"].filter(Boolean).join(":");
+  const path = [fakeProcesses ? join(repoRoot, "test", "stub", "fake-ps") : null, recordNotifications ? join(repoRoot, "test", "stub", "notify") : null, join(process.execPath, ".."), "/usr/bin", "/bin", "/usr/sbin", "/sbin"].filter(Boolean).join(":");
   const env = { HOME: home, PATH: path, USER: "demo", STUB_CLAUDE_DIR: stubDir, TZ: process.env.TZ ?? "UTC" };
   // The made-up processes run the version the stand-in CLI starts on.
   if (fakeProcesses) env.FAKE_PS_VERSION = claude.version;

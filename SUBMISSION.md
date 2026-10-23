@@ -37,7 +37,7 @@ Sources, read 2026-10-21: getpaseo/plugins at `702e140` (README, REVIEW.md, BOTS
 | # | Decision | Chosen | Why |
 | --- | --- | --- | --- |
 | 1 | Plugin id and package name | `claude-update`, `paseo-plugin-claude-update` | Free on npm and in both listings on 2026-10-21. The official id is the package name without `paseo-plugin-`, so both listings use `claude-update`. |
-| 2 | Supported Paseo versions | `>=0.10.3 <0.13.0` | Run against 0.10.3, 0.11.4 and 0.12.0. Betas pass because Paseo also tests a version's `major.minor.patch`. The cap means every new Paseo minor needs a release that raises it once the plugin has run on it; the daily compatibility check (RELEASING.md) says when, from the first beta. |
+| 2 | Supported Paseo versions | `>=0.10.3 <0.14.0` | Run against 0.10.3, 0.11.4, 0.12.0 and 0.13.0-beta.2. Betas pass because Paseo also tests a version's `major.minor.patch`. The cap means every new Paseo minor needs a release that raises it once the plugin has run on it; the daily compatibility check (RELEASING.md) says when, from the first beta. |
 | 3 | Screenshots outside the manifest | No `name`, `icon` or `media` in `paseo-plugin.json` | Paseo 0.10 and the 0.11 betas refuse a manifest with them, and Paseo Cafe would reject them with a 0.10.3 minimum. The official directory takes image addresses in the submission instead and keeps them across versions. Move them into the manifest in the release that drops Paseo 0.10. |
 | 4 | Categories | Official: Daemon management, Sidebar. Paseo Cafe: automation, monitoring | The closest of each listing's own lists. |
 | 5 | First-run behaviour | Auto-update off | Installing a plugin should not change the host's CLI unasked. |
