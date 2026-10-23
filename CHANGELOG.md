@@ -3,7 +3,7 @@
 All notable changes to this plugin are listed here. Versions follow [semantic versioning](https://semver.org).
 A version marked "not published" was finished but never reached npm; its changes are in the next published one.
 
-## Unreleased
+## 0.3.0 - 2026-10-23
 
 - A "Show in the sidebar" switch, on the status page and in the settings, takes the "Claude Code updates" sidebar row away. It is on by default, so nothing changes until it is switched off, and the row comes back as soon as it is on again. With the row off, the status page is opened from the Command Center ("Claude Code updates: open status"); the notices, desktop notifications and the settings screen's "Checks" lines are unchanged. The status RPC reports `showInSidebar`.
 
