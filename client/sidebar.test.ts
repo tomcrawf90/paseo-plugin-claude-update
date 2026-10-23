@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { createSidebarRow, type SidebarRow } from "./sidebar";
+import { DEFAULT_SETTINGS, type UpdateSettings } from "../shared/settings";
+import { createSidebarRow, saveShowInSidebar, type SidebarRow } from "./sidebar";
 
 const AVAILABLE: SidebarRow = { title: "Claude Code update available", icon: "CircleArrowUp" };
 const UPDATED: SidebarRow = { title: "Claude Code updated", icon: "CircleCheck" };
@@ -135,5 +136,34 @@ describe("the sidebar row", () => {
     row.show(UPDATED);
     await row.settled();
     expect(fake.rows).toEqual([AVAILABLE]);
+  });
+});
+
+describe("saving the sidebar switch", () => {
+  const values: UpdateSettings = { ...DEFAULT_SETTINGS, mode: "auto", intervalHours: 12 };
+
+  it("saves only the switch and then reads the status again", async () => {
+    const saved: UpdateSettings[] = [];
+    const order: string[] = [];
+    const ok = await saveShowInSidebar(
+      async (next) => {
+        saved.push(next);
+        order.push("save");
+        return true;
+      },
+      values,
+      false,
+      () => order.push("refresh"),
+    );
+    expect(ok).toBe(true);
+    expect(saved).toEqual([{ ...values, showInSidebar: false }]);
+    expect(order).toEqual(["save", "refresh"]);
+  });
+
+  it("reads nothing again when the save is refused", async () => {
+    let refreshed = 0;
+    const ok = await saveShowInSidebar(async () => false, values, true, () => (refreshed += 1));
+    expect(ok).toBe(false);
+    expect(refreshed).toBe(0);
   });
 });

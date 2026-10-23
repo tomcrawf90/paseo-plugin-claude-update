@@ -74,4 +74,6 @@ export const SIDEBAR_LABEL = "Show in the sidebar";
 export const SIDEBAR_ON =
   "On: the “Claude Code updates” row in the sidebar opens the status page, and its title names an update waiting, a failure or a mismatch.";
 export const SIDEBAR_OFF =
-  "Off: no sidebar row. The status page, with Update now, is in the Command Center (⌘K) as “Claude Code updates: open status”; the settings stay under Settings → Plugins. Notices and desktop notifications are unchanged.";
+  "Off: no sidebar row. The status page, with Update now, opens from the Command Center as “Claude Code updates: open status”, and this switch stays under Settings → Plugins. Notices and desktop notifications are unchanged.";
+export const SIDEBAR_QUIET =
+  "Desktop notifications are off as well, so an update waiting, a failure or a mismatch shows only on the status page.";

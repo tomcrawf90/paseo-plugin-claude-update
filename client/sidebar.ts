@@ -1,3 +1,5 @@
+import type { UpdateSettings } from "../shared/settings";
+
 export interface SidebarRow {
   title: string;
   icon: string;
@@ -75,4 +77,21 @@ export function createSidebarRow(
       disposed = true;
     },
   };
+}
+
+/**
+ * Saves the "Show in the sidebar" switch, nothing else changed, and once it
+ * is saved has the status read again: the row follows the status, so it goes
+ * or comes back at once rather than at the next read. A save that fails
+ * changes nothing and reads nothing.
+ */
+export async function saveShowInSidebar(
+  save: (values: UpdateSettings) => Promise<boolean>,
+  values: UpdateSettings,
+  on: boolean,
+  refreshStatus: () => void,
+): Promise<boolean> {
+  const saved = await save({ ...values, showInSidebar: on });
+  if (saved) refreshStatus();
+  return saved;
 }

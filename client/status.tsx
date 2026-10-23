@@ -1,5 +1,5 @@
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
+import type { PluginSurfaceProps, SettingsState } from "@getpaseo/plugin/client";
 import { openExternalUrl, useRpc, useSettings } from "@getpaseo/plugin/client";
 import { ScrollView, useToast } from "@getpaseo/plugin/client/react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,12 +29,17 @@ import {
   SIDEBAR_LABEL,
   SIDEBAR_OFF,
   SIDEBAR_ON,
+  SIDEBAR_QUIET,
   updateSettings,
   withAutoUpdate,
 } from "../shared/settings";
 import { dismissAttention, type ClaudeProcess, type Status } from "../shared/status";
 import { CHECK_NOW_HINT, type RunResult } from "./activity";
 import { STATUS_QUERY_KEY, useCheck, useRefreshStatus } from "./check";
+import { saveShowInSidebar } from "./sidebar";
+
+/** The plugin's settings, read once for the page so both switches wait for each other's save. */
+type Settings = SettingsState<typeof updateSettings.schema>;
 
 function useStyles(theme: PluginTheme, compact: boolean) {
   return useMemo(
@@ -160,8 +165,7 @@ function Toggle({
  * The "Auto-update Claude Code" switch, on the status page so it is one
  * click away. It is the same setting as the one on the settings screen.
  */
-function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles }) {
-  const settings = useSettings(updateSettings);
+function AutoUpdateCard({ theme, styles, settings }: { theme: PluginTheme; styles: Styles; settings: Settings }) {
   const toast = useToast();
 
   if (settings.status === "error" || settings.status === "invalid") {
@@ -220,8 +224,7 @@ function AutoUpdateCard({ theme, styles }: { theme: PluginTheme; styles: Styles 
  * same setting as the one on the settings screen. Once it is saved the status
  * is read again, so the row goes or comes back at once.
  */
-function SidebarCard({ theme, styles }: { theme: PluginTheme; styles: Styles }) {
-  const settings = useSettings(updateSettings);
+function SidebarCard({ theme, styles, settings }: { theme: PluginTheme; styles: Styles; settings: Settings }) {
   const toast = useToast();
   const refreshStatus = useRefreshStatus();
 
@@ -233,9 +236,9 @@ function SidebarCard({ theme, styles }: { theme: PluginTheme; styles: Styles }) 
   const off = !ready || settings.saving;
   async function flip(): Promise<void> {
     if (settings.status !== "ready") return;
-    const saved = await settings.save({ ...settings.values, showInSidebar: !on }, settings.revision);
-    if (saved) refreshStatus();
-    else toast.error("Could not save the setting.");
+    const { revision } = settings;
+    const saved = await saveShowInSidebar((values) => settings.save(values, revision), settings.values, !on, refreshStatus);
+    if (!saved) toast.error("Could not save the setting.");
   }
 
   return (
@@ -250,6 +253,9 @@ function SidebarCard({ theme, styles }: { theme: PluginTheme; styles: Styles }) 
         onPress={() => void flip()}
       />
       {ready ? <Text style={styles.value}>{on ? SIDEBAR_ON : SIDEBAR_OFF}</Text> : null}
+      {ready && !on && !settings.values.desktopNotifications ? (
+        <Text style={{ color: theme.colors.statusWarning, fontSize: 13 }}>{SIDEBAR_QUIET}</Text>
+      ) : null}
     </View>
   );
 }
@@ -324,6 +330,7 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
   const queryClient = useQueryClient();
   const dismiss = useRpc(dismissAttention);
   const check = useCheck();
+  const settings = useSettings(updateSettings);
   const { busy, active, checkLabel, updateLabel, line } = check.view;
   const { result, now } = check;
 
@@ -432,8 +439,8 @@ export function StatusSurface({ theme, layout }: PluginSurfaceProps) {
         <Text style={styles.muted}>{CHECK_NOW_HINT}</Text>
       </View>
 
-      <AutoUpdateCard theme={theme} styles={styles} />
-      <SidebarCard theme={theme} styles={styles} />
+      <AutoUpdateCard theme={theme} styles={styles} settings={settings} />
+      <SidebarCard theme={theme} styles={styles} settings={settings} />
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Versions</Text>

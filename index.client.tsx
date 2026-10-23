@@ -1,6 +1,6 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 
-import { onStatus, publishStatus } from "./client/bus";
+import { onStatus, publishedCount, publishStatus } from "./client/bus";
 import { UpdateSettingsScreen } from "./client/settings";
 import { createSidebarRow } from "./client/sidebar";
 import { StatusSurface } from "./client/status";
@@ -34,7 +34,11 @@ export default function contribute(client: PluginClientContext) {
 
   async function refresh(): Promise<void> {
     try {
-      publishStatus(await client.rpc(getStatus, {}));
+      const before = publishedCount();
+      const status = await client.rpc(getStatus, {});
+      // A screen or the Command Center published a status while this read was
+      // out, perhaps one read after a switch was saved: this one may be older.
+      if (publishedCount() === before) publishStatus(status);
     } catch {
       // The host is away or the plugin is restarting; the next round tries again.
     }

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 
 import { publishStatus } from "../client/bus";
-import { checkNow, getStatus, type Status } from "../shared/status";
+import { checkNow, getStatus, statusSchema, type Status } from "../shared/status";
 
 // The entry pulls in the screens, which import the host's modules. Nothing
 // here renders them, so empty stand-ins are enough to load the entry.
@@ -275,6 +275,39 @@ describe("the plugin in the app", () => {
     await settle();
     expect(fake.rows).toEqual([QUIET_ROW]);
     expect(fake.mostRows).toBe(1);
+  });
+
+  it("drops its own read when a newer status was published while it was out", async () => {
+    vi.useFakeTimers();
+    try {
+      const fake = app({ status: QUIET });
+      const answer = fake.rpc;
+      let release: (() => void) | null = null;
+      load(fake);
+      await vi.advanceTimersByTimeAsync(5);
+      expect(fake.rows).toEqual([QUIET_ROW]);
+      // The next 60 s read reads the settings while the row is still wanted, and is slow to answer.
+      fake.rpc = (contract, input) =>
+        new Promise((resolve) => {
+          release = () => resolve(answer(contract, input));
+        });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(release).not.toBeNull();
+      // Meanwhile the switch is saved off and a screen publishes what it read after that.
+      publishStatus({ ...QUIET, showInSidebar: false });
+      await vi.advanceTimersByTimeAsync(5);
+      expect(fake.rows).toEqual([]);
+      release!();
+      await vi.advanceTimersByTimeAsync(5);
+      expect(fake.rows).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the row for a host that does not report the switch", () => {
+    const { showInSidebar: _, ...older } = QUIET;
+    expect(statusSchema.parse(older).showInSidebar).toBe(true);
   });
 
   it("changes nothing after it has been stopped", async () => {

@@ -24,6 +24,7 @@ import {
   SIDEBAR_LABEL,
   SIDEBAR_OFF,
   SIDEBAR_ON,
+  SIDEBAR_QUIET,
   updateSettings,
   withAutoUpdate,
   type Channel,
@@ -32,9 +33,10 @@ import {
 import { lastCheckText, lastResult, nextCheckText, QUIET_ROW } from "../shared/format";
 import { isExactVersion } from "../shared/version";
 import { useCheck, useRefreshStatus } from "./check";
+import { saveShowInSidebar } from "./sidebar";
 
 /** Where the status page is when there is no sidebar row. */
-const OPEN_STATUS_COMMAND = "“Claude Code updates: open status” in the Command Center (⌘K)";
+const OPEN_STATUS_COMMAND = "“Claude Code updates: open status” in the Command Center";
 
 const CHANNEL_OPTIONS: readonly { label: string; value: Channel }[] = [
   { label: "latest", value: "latest" },
@@ -46,7 +48,7 @@ const CHANNEL_OPTIONS: readonly { label: string; value: Channel }[] = [
  * last checked, how that ended, when it checks next, and "Check now". The
  * status page has the same, with the history.
  */
-function CheckSection() {
+function CheckSection({ showInSidebar }: { showInSidebar: boolean }) {
   const check = useCheck();
   const { data, view, result, now } = check;
   if (data === undefined) {
@@ -63,7 +65,7 @@ function CheckSection() {
   return (
     <SettingsSection
       title="Checks"
-      info={`The status page has the history and what is still running an older version: ${data.showInSidebar ? `“${QUIET_ROW.title}” in the sidebar` : OPEN_STATUS_COMMAND}.`}
+      info={`The status page has the history and what is still running an older version: ${showInSidebar ? `“${QUIET_ROW.title}” in the sidebar` : OPEN_STATUS_COMMAND}.`}
     >
       <SettingsCard>
         <SettingsRow label="Last checked" hint={lastCheckText(data, now)} />
@@ -137,7 +139,7 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
 
   return (
     <>
-      <CheckSection />
+      <CheckSection showInSidebar={values.showInSidebar} />
       <SettingsSection
         title="Claude Code updates"
         info={`Claude Code only updates itself from its terminal interface. Paseo runs it without one, so this plugin runs the CLI's own updater on a schedule. Its status page is ${values.showInSidebar ? "behind “Claude Code updates” in the sidebar, and in the Command Center as “Claude Code updates: open status”" : OPEN_STATUS_COMMAND}.`}
@@ -174,15 +176,10 @@ export function UpdateSettingsScreen(_props: PluginSurfaceProps) {
           />
           <SettingsSwitch
             label={SIDEBAR_LABEL}
-            hint={values.showInSidebar ? SIDEBAR_ON : SIDEBAR_OFF}
+            hint={values.showInSidebar ? SIDEBAR_ON : `${SIDEBAR_OFF}${values.desktopNotifications ? "" : ` ${SIDEBAR_QUIET}`}`}
             value={values.showInSidebar}
             disabled={saving}
-            onValueChange={(showInSidebar) =>
-              void apply({ showInSidebar }).then((ok) => {
-                // The sidebar row follows the status, so read it again now.
-                if (ok) refreshStatus();
-              })
-            }
+            onValueChange={(on) => void saveShowInSidebar(apply, values, on, refreshStatus)}
           />
         </SettingsCard>
       </SettingsSection>
