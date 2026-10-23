@@ -3,11 +3,12 @@
 // a table row. What the compatibility check (scripts/compat.mjs) cannot see:
 //
 //   schedule      the first scheduled check installs with auto-update on, and raises its notification
-//   sidebar row   the row is there and opens the status page
+//   sidebar row   the row is there, opens the status page, and keeps its plain title after an update
 //   status page   the auto-update switch saves; "Check now" looks and installs nothing; the row names the update
 //   sidebar off   "Show in the sidebar" off takes the row away, also after a reload
 //   command       the three Command Center items, from a host page; "check now" and "settings" run
 //   settings      the settings screen's "Checks" section and its "Check now"; its sidebar switch brings the row back
+//   daemon log    nothing from the plugin on stderr, and no warning or error about it
 //
 //   npm run check:ui -- --paseo 0.13.0-beta.2     # macOS, Chrome; CHROME_PATH to use another
 //
@@ -28,6 +29,8 @@ const chromePath = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/C
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const ROW = "Claude Code updates";
 const READY = "Claude update ready";
+// Every title the row can have (shared/format.ts): with the switch off, none may be there.
+const TITLES = [ROW, READY, "Claude update failed", "Claude pin mismatch", "Claude channel issue"];
 
 const work = await mkdtemp(join(tmpdir(), `claude-update-ui-${values.paseo}-`));
 const prefix = join(work, "paseo");
@@ -65,14 +68,29 @@ const labels = () =>
     ),
   );
 const hasRow = async (title) => (await labels()).includes(title);
+const rowTitles = async () => (await labels()).filter((label) => TITLES.includes(label));
+/**
+ * Presses the one control on screen whose label matches. A screen left behind
+ * stays mounted out of sight, so a control counts only when, scrolled into
+ * view, it is the element found at its own centre; two such matches fail.
+ */
 async function click(pattern) {
-  const handles = await page.$$('[role="button"], button, [role="menuitem"], [role="switch"], a');
-  for (const handle of handles) {
+  const seen = [];
+  for (const handle of await page.$$('[role="button"], button, [role="menuitem"], [role="switch"], a')) {
     const label = await handle.evaluate((element) => (element.getAttribute("aria-label") || element.textContent || "").trim());
-    // A screen left behind stays mounted out of sight: only what can be seen is pressed.
-    if (pattern.test(label) && (await handle.boundingBox()) !== null) return handle.click();
+    if (!pattern.test(label)) continue;
+    const onTop = await handle.evaluate((element) => {
+      element.scrollIntoView({ block: "center" });
+      const box = element.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) return false;
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return hit !== null && (element === hit || element.contains(hit));
+    });
+    if (onTop) seen.push(handle);
   }
-  throw new Error(`nothing to click matches ${pattern}`);
+  if (seen.length === 0) throw new Error(`nothing on screen to click matches ${pattern}`);
+  if (seen.length > 1) throw new Error(`${seen.length} controls on screen match ${pattern}`);
+  await seen[0].click();
 }
 const text = () => page.evaluate(() => document.body.innerText);
 const waitForText = (wanted, timeoutMs) => until(`"${wanted}"`, async () => (await text()).includes(wanted), timeoutMs);
@@ -90,7 +108,7 @@ async function commandCenter(query) {
 }
 
 try {
-  const pointer = (await (await fetch("https://downloads.claude.ai/claude-code-releases/latest")).text()).trim();
+  const pointer = (await (await fetch("https://downloads.claude.ai/claude-code-releases/latest", { signal: AbortSignal.timeout(20_000) })).text()).trim();
   const [major, minor, patch] = pointer.split(".").map(Number);
   if (![major, minor, patch].every(Number.isInteger) || patch < 3) throw new Error(`unexpected release pointer: ${pointer}`);
   const claude = { version: `${major}.${minor}.${patch - 3}`, latest: `${major}.${minor}.${patch - 1}` };
@@ -112,8 +130,11 @@ try {
     return `${state.previousVersion} → ${state.installedVersion} by "claude update"`;
   });
   await step("schedule: its notification is raised", async () => {
-    const notifications = await readFile(join(daemon.stubDir, "notifications"), "utf8").catch(() => "");
-    if (!/display notification "Updated Claude Code/.test(notifications)) throw new Error(`notifications: ${JSON.stringify(notifications)}`);
+    // The state is written before the notification is raised.
+    const read = () => readFile(join(daemon.stubDir, "notifications"), "utf8").catch(() => "");
+    const notifications = await until("the notification", async () => /display notification "Updated Claude Code/.test(await read()) && read(), 15_000).catch(async () => {
+      throw new Error(`notifications: ${JSON.stringify(await read())}`);
+    });
     return notifications.match(/with title "([^"]+)"/)?.[1] ?? "";
   });
 
@@ -122,14 +143,19 @@ try {
   await page.setViewport({ width: 1440, height: 900 });
   await page.goto(`http://${daemon.host}/`, { waitUntil: "networkidle2" });
 
-  await step("sidebar row: there, with its plain title after an update", async () => {
+  await step("sidebar row: there, and opens the status page", async () => {
     await until(`the "${ROW}" row`, () => hasRow(ROW), 60_000);
-  });
-  await step("sidebar row: opens the status page", async () => {
     await click(new RegExp(`^${ROW}$`));
     await waitForText("Next scheduled check");
     await waitForText("Updated");
     return new URL(page.url()).pathname.replace(/\/h\/[^/]+/, "/h/<host>");
+  });
+  await step("sidebar row: keeps its plain title after an update", async () => {
+    // The row is added with this title before the first status read; the page
+    // above has read the status, and the row's own read follows within moments.
+    await sleep(5000);
+    const titles = await rowTitles();
+    if (titles.join() !== ROW) throw new Error(`the row reads ${titles.join(", ") || "nothing"}`);
   });
   await step("status page: the auto-update switch saves", async () => {
     await click(/^Auto-update Claude Code$/);
@@ -139,21 +165,23 @@ try {
   await step("status page: Check now looks, installs nothing, and the row names the update", async () => {
     const before = (await installs()).length;
     await click(/^Check for a Claude Code update now/);
-    await waitForText("Finished");
+    await waitForText(`Claude Code ${pointer} is available (${claude.latest} is installed)`);
     await until(`the "${READY}" row`, () => hasRow(READY));
     if ((await installs()).length !== before) throw new Error("Check now ran the installer");
-    return `${claude.latest} → ${pointer} reported`;
+    return `${pointer} available, ${claude.latest} installed`;
   });
   await step("sidebar off: the switch takes the row away", async () => {
     await click(/^Show in the sidebar$/);
     await until("showInSidebar false in the settings file", async () => (await settings()).showInSidebar === false);
-    await until("the row to go", async () => !(await hasRow(READY)) && !(await hasRow(ROW)));
+    await until("the row to go", async () => (await rowTitles()).length === 0);
   });
   await step("sidebar off: the row stays away after a reload", async () => {
     await page.reload({ waitUntil: "networkidle2" });
     await waitForText("Next scheduled check", 60_000);
-    await sleep(3000);
-    if ((await hasRow(READY)) || (await hasRow(ROW))) throw new Error("the row came back");
+    // The row is added before the first status read and taken away by it.
+    await until("the row to go after the first status read", async () => (await rowTitles()).length === 0, 30_000);
+    await sleep(5000);
+    if ((await rowTitles()).length > 0) throw new Error(`the row came back: ${(await rowTitles()).join(", ")}`);
   });
   await step("command center: the three items, from the status page", async () => {
     await commandCenter("claude code updates");
@@ -169,7 +197,6 @@ try {
     await click(new RegExp(`^${ROW}: check now$`));
     await until("a newer last check", async () => (await readJson(join(pluginData, "state.json"))).lastCheckAt !== before);
     if ((await installs()).length !== installed) throw new Error("the look ran the installer");
-    await waitForText("Next scheduled check");
   });
   await step("command center: settings opens the settings screen", async () => {
     await commandCenter("claude code updates");
@@ -181,7 +208,8 @@ try {
     const before = (await readJson(join(pluginData, "state.json"))).lastCheckAt;
     await click(/^Check now$/);
     await until("a newer last check", async () => (await readJson(join(pluginData, "state.json"))).lastCheckAt !== before);
-    await waitForText("Finished");
+    // "Finished:" with its colon is the settings screen's line; the status page says "Finished 2 min ago".
+    await waitForText("Finished:");
   });
   await step("settings screen: the sidebar switch brings the row back", async () => {
     await click(/^Show in the sidebar$/);
@@ -194,10 +222,14 @@ try {
     const ran = await installs();
     if (ran.join() !== "update") throw new Error(`the CLI was asked: ${ran.join(", ")}`);
   });
-  await step("daemon log: no error from the plugin", async () => {
-    const log = await readFile(join(work, "daemon.log"), "utf8");
-    const errors = log.split("\n").filter((line) => line.includes('"pluginId":"claude-update"') && /"level":(50|60)/.test(line));
-    if (errors.length > 0) throw new Error(errors[0].slice(0, 300));
+  await step("daemon log: nothing from the plugin on stderr, no warning or error", async () => {
+    // Paseo logs what a plugin writes, stderr included, as "Plugin output" at
+    // level 30, with the stream named; its own complaints about a plugin are 40 and up.
+    const lines = (await readFile(join(work, "daemon.log"), "utf8")).split("\n").filter((line) => line.includes('"pluginId":"claude-update"'));
+    if (!lines.some((line) => line.includes("[claude-update] started"))) throw new Error("no line from the plugin in the daemon log: has its format changed?");
+    const bad = lines.filter((line) => line.includes('"stream":"stderr"') || /"level":(4\d|5\d|6\d)/.test(line));
+    if (bad.length > 0) throw new Error(`${bad.length} lines, the first: ${bad[0].slice(0, 300)}`);
+    return `${lines.length} lines from the plugin, none on stderr`;
   });
 
   console.log(`\nPaseo ${version}\n\n| Step | Result | Detail |\n| --- | --- | --- |`);

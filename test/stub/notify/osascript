@@ -3,4 +3,4 @@
 # nothing and appends the script it was given (the `display notification`
 # line) to STUB_CLAUDE_DIR/notifications.
 shift
-echo "$*" >> "${STUB_CLAUDE_DIR:?set STUB_CLAUDE_DIR}/notifications"
+printf '%s\n' "$*" >> "${STUB_CLAUDE_DIR:?set STUB_CLAUDE_DIR}/notifications"

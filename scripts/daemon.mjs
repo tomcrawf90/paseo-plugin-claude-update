@@ -1,5 +1,5 @@
 // A throwaway Paseo daemon with this plugin installed, for the compatibility
-// check and the screenshots. Everything lives under one temporary directory:
+// check, the screenshots and the UI walk. Everything lives under one temporary directory:
 // the Paseo CLI of the chosen version, the daemon's home, a home directory
 // with the stand-in CLI (test/stub/claude) as `claude`, and its state. The
 // real Claude Code install, ~/.paseo and the running daemon are never used.
@@ -70,9 +70,10 @@ export async function copyPlugin(target, range) {
  * `work`, and installs the plugin from `pluginDir`. Options:
  *   claude: { version, latest }   the stand-in CLI's installed and newest version
  *   fakeProcesses: true           put test/stub/fake-ps first on PATH (made-up process list)
- *   recordNotifications: true     turn desktop notifications on, with test/stub/notify first on
- *                                 PATH: each one goes to stubDir/notifications, none to the screen
- *   settings: { … }               plugin settings written before the install (settings version 1)
+ *   recordNotifications: true     turn desktop notifications on, with test/stub/notify on PATH before
+ *                                 the system's: each one goes to stubDir/notifications, none to the screen
+ *   settings: { … }               plugin settings written before the install (settings version 1);
+ *                                 desktopNotifications in it is overridden by recordNotifications
  *   webUi: true                   serve Paseo's web app on the daemon's port
  */
 export async function startDaemon({ prefix, work, pluginDir, claude = { version: "2.1.303", latest: "2.1.306" }, fakeProcesses = false, recordNotifications = false, settings = {}, webUi = false }) {
