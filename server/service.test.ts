@@ -415,6 +415,19 @@ describe("status", () => {
     expect((await waiting(null)).autoInstall).toBe(false);
   });
 
+  it("says whether the sidebar row is wanted, and wants it while the settings cannot be read", async () => {
+    const shown = async (settings: UpdateSettings | null) => {
+      const s = startService(harness("2.1.292").deps, async () => settings, NEVER);
+      const status = await s.status();
+      s.stop();
+      return status.showInSidebar;
+    };
+    expect(await shown(settingsWith())).toBe(true);
+    expect(await shown(settingsWith({ showInSidebar: false }))).toBe(false);
+    // The row is the way in to the page that says what is wrong with them.
+    expect(await shown(null)).toBe(true);
+  });
+
   it("says so where processes cannot be listed", async () => {
     const h = harness("2.1.292");
     const s = start(h, settingsWith(), { platform: "linux" });

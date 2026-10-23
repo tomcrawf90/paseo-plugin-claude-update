@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 
+import { publishStatus } from "../client/bus";
 import { checkNow, getStatus, type Status } from "../shared/status";
 
 // The entry pulls in the screens, which import the host's modules. Nothing
@@ -29,6 +30,7 @@ const QUIET: Status = {
   rollbackCommand: null,
   attention: null,
   autoInstall: false,
+  showInSidebar: true,
   checking: false,
   activity: null,
   staleProcesses: [],
@@ -240,6 +242,39 @@ describe("the plugin in the app", () => {
     expect(titles(fake)).toEqual(["Claude update ready"]);
     expect(warn).toHaveBeenCalledWith("[claude-update] the check could not be run:", expect.any(Error));
     warn.mockRestore();
+  });
+
+  it("has no row once the status says the row is switched off, news or not, and is still reachable from the Command Center", async () => {
+    const fake = app({ status: { ...AVAILABLE, showInSidebar: false } });
+    load(fake);
+    await settle();
+    expect(fake.rows).toEqual([]);
+    await fake.select("open-status");
+    await fake.select("open-settings");
+    expect(fake.opened).toEqual(["surface:status", "settings:settings"]);
+    fake.answers.check = { ...FAILED, showInSidebar: false };
+    await fake.select("check-now");
+    await settle();
+    expect(fake.rows).toEqual([]);
+  });
+
+  it("takes the row away and brings it back at the next status a screen reads, without a restart", async () => {
+    const fake = app({ status: AVAILABLE });
+    load(fake);
+    await settle();
+    expect(titles(fake)).toEqual(["Claude update ready"]);
+    // What a screen publishes when it reads the status again after the switch is saved.
+    publishStatus({ ...AVAILABLE, showInSidebar: false });
+    await settle();
+    expect(fake.rows).toEqual([]);
+    publishStatus(AVAILABLE);
+    await settle();
+    expect(titles(fake)).toEqual(["Claude update ready"]);
+    publishStatus({ ...QUIET, showInSidebar: false });
+    publishStatus(QUIET);
+    await settle();
+    expect(fake.rows).toEqual([QUIET_ROW]);
+    expect(fake.mostRows).toBe(1);
   });
 
   it("changes nothing after it has been stopped", async () => {

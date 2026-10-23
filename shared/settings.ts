@@ -39,6 +39,13 @@ export const updateSettings = defineSettings({
     claudePath: z.string().max(1024).default(""),
     /** Raise an operating-system notification for each new notice: an update, a version waiting, a mismatch, a failure (macOS only). */
     desktopNotifications: z.boolean().default(true),
+    /**
+     * The "Show in the sidebar" switch: off takes the sidebar row away, and
+     * with it the row's title naming news. The notices, the macOS
+     * notifications and the Command Center items stay. On by default, so a
+     * settings file without it reads as the row there has always been.
+     */
+    showInSidebar: z.boolean().default(true),
   }),
 });
 
@@ -62,3 +69,9 @@ export const AUTO_UPDATE_ON =
 export const AUTO_UPDATE_OFF = "Off: you are only told when a new version is out. Nothing is installed until you press Update now.";
 export const AUTO_UPDATE_SAFETY =
   "Agents that are already running keep the version they started with until they are restarted. After every update the status page shows the command that goes back to the version before.";
+
+export const SIDEBAR_LABEL = "Show in the sidebar";
+export const SIDEBAR_ON =
+  "On: the “Claude Code updates” row in the sidebar opens the status page, and its title names an update waiting, a failure or a mismatch.";
+export const SIDEBAR_OFF =
+  "Off: no sidebar row. The status page, with Update now, is in the Command Center (⌘K) as “Claude Code updates: open status”; the settings stay under Settings → Plugins. Notices and desktop notifications are unchanged.";

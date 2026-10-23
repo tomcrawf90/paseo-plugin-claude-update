@@ -30,6 +30,16 @@ export interface Check {
 }
 
 /**
+ * Reads the status again now. A screen calls it after saving a setting the
+ * status reports, so that the sidebar row follows it at once rather than at
+ * the next read.
+ */
+export function useRefreshStatus(): () => void {
+  const queryClient = useQueryClient();
+  return () => void queryClient.invalidateQueries({ queryKey: STATUS_QUERY_KEY });
+}
+
+/**
  * The status, kept fresh, and the two buttons. The status page and the
  * settings screen both use it; Paseo gives them one query client, so they
  * read one cached status. The spinner and the pressed button belong to the
