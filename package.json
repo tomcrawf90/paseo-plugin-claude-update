@@ -1,6 +1,6 @@
 {
   "name": "paseo-plugin-claude-update",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Keeps the Claude Code CLI up to date on the Paseo host, where its own updater never runs, and shows which running agents are still on an old version.",
   "license": "MIT",
   "author": "Tom Crawford",
