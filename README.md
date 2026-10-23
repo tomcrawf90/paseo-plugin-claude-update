@@ -50,7 +50,7 @@ The settings screen:
 
 ## Install
 
-Requires Paseo 0.10.3 to 0.12 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
+Requires Paseo 0.10.3 to 0.13 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
 installed with its native installer on the daemon host.
 
 From the official Paseo plugin directory, once it is listed there (Paseo 0.11 or later):
@@ -81,7 +81,8 @@ settings, to have it update on the schedule.
 "Check now" button (it only looks) and "Update now" (it installs). The same lines and "Check now"
 are on the settings screen, under **Settings → Plugins → Claude Code updates**. The Command Center
 (⌘K) has "Claude Code updates: open status", "Claude Code updates: check now" and "Claude Code
-updates: settings". With **Show in the sidebar** off there is no row, and the Command Center is the
+updates: settings"; Paseo lists them while a host's page is open, such as a workspace or this status page,
+not on its start page. With **Show in the sidebar** off there is no row, and the Command Center is the
 way to the status page and its "Update now" (on a phone, where there may be no Command Center, turn the
 switch back on under Settings → Plugins to reach the page). The row's title changes only when:
 
@@ -191,13 +192,17 @@ Not verified at the time of writing (0.2.1): how the status page, settings scree
 look in the Paseo desktop window or on a phone (they were seen in the app's own web bundle in a browser, against a throwaway daemon), and
 whether a macOS notification is displayed when raised from the daemon. The update itself, the schedule, and the state and log files were verified in a real Paseo
 0.10.3 daemon against a throwaway copy of the CLI; in 0.11.4 and 0.12.0 daemons a look, "Update now"
-and the release notes were.
+and the release notes were. As of 2026-10-23, in throwaway 0.10.3, 0.12.0 and 0.13.0-beta.2 daemons with a
+stand-in CLI, the scheduled update and its notification, the sidebar row and its switch, the status page,
+the settings screen and the Command Center items were checked in each daemon's own web app (`npm run check:ui`).
 
 ## Development
 
 ```bash
 npm install
 npm run verify    # typecheck, tests, a local pre-check for both listings' rules, the changelog check
+npm run check:compat              # the oldest and the newest Paseo: range, typecheck, a throwaway daemon
+npm run check:ui -- --paseo 0.13.0-beta.2   # the screens in that Paseo's own web app (macOS, Chrome)
 ```
 
 The tests use a stand-in `claude` (`test/stub/claude`) and never touch a real install or the

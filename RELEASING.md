@@ -97,7 +97,7 @@ comments on the open one).
 
 | The summary says | Do |
 | --- | --- |
-| works, but `requirements.paseo` refuses it | Usually a beta of the next minor. Raise the `<` bound in `paseo-plugin.json` to the minor after it, update the README, OVERVIEW.md, SUBMISSION.md and AGENTS.md, and release a patch once that version is out. |
+| works, but `requirements.paseo` refuses it | Usually a beta of the next minor. Read its changelog's "Plugins" section, run `npm run check:ui -- --paseo <version>` (the screens in its own web app) and, for the oldest supported Paseo, the same. Then raise the `<` bound in `paseo-plugin.json` to the minor after it, update the README, OVERVIEW.md, SUBMISSION.md, AGENTS.md and the versions in `scripts/compat.test.mjs`, and release a patch once that version is out. |
 | broken | The plugin needs a change for that Paseo. Fix it in a pull request; `npm run check:compat -- --paseo <version>` repeats the check locally. |
 
 GitHub switches a scheduled workflow off after 60 days without a commit to the repository. A merged
