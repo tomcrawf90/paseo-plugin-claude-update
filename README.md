@@ -197,7 +197,7 @@ stand-in CLI, the scheduled update and its notification, the sidebar row and its
 the settings screen and the Command Center items were checked in each daemon's own web app (`npm run check:ui`);
 as of 2026-10-26 the same in 0.9.0, 0.10.0 and 0.13.1 daemons. The range has no upper bound, so a Paseo newer
 than these is let in before anyone has run the plugin on it; if it has dropped a plugin function the plugin
-calls, the plugin stops at start and says which one (Settings → Plugins).
+calls, the plugin stops at start with an error that says which one.
 
 ## Development
 

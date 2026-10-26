@@ -6,7 +6,7 @@ A version marked "not published" was finished but never reached npm; its changes
 ## Unreleased
 
 - Runs on any Paseo from 0.9.0 on, 0.13 and later included: the supported range is now `>=0.9.0`, with no upper bound. 0.3.0 and earlier refused any Paseo from 0.13 on ("requires Paseo >=0.10.3 <0.13.0"), so after a Paseo update the plugin stopped loading. A new Paseo no longer needs a new release of the plugin.
-- If a later Paseo drops a plugin function the plugin calls, the plugin stops at start with a message naming it (in Settings → Plugins and the log), in place of a bare "is not a function".
+- If a later Paseo drops a plugin function the plugin calls, the plugin stops at start with an error naming it, in place of a bare "is not a function".
 
 ## 0.3.0 - 2026-10-23
 

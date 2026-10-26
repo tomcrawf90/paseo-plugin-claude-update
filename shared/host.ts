@@ -1,7 +1,10 @@
 // The plugin's range has a minimum and no maximum, so a future Paseo is let in
 // before anyone has run the plugin on it. If that Paseo has removed or renamed
 // a function the plugin calls, the entry stops here with a message that names
-// it, in place of "x is not a function" from somewhere inside.
+// it, in place of "x is not a function" from somewhere inside. It sees only
+// functions on the context an entry is given: a function whose behaviour
+// changed, or a missing export of a module the screens import (useRpc,
+// useToast, a component), still fails later, at render.
 
 const ISSUES_URL = "https://github.com/tomcrawf90/paseo-plugin-claude-update/issues";
 

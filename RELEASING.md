@@ -97,6 +97,7 @@ comments on the open one).
 
 | The summary says | Do |
 | --- | --- |
+| works, but `requirements.paseo` refuses it (below its minimum) | Only for a version asked for with `--paseo` below the minimum: expected. Lower or raise the minimum only on purpose (AGENTS.md). |
 | broken | The plugin needs a change for that Paseo. Fix it in a pull request; `npm run check:compat -- --paseo <version>` repeats the check locally, and `npm run check:ui -- --paseo <version>` walks the screens in that Paseo's own web app, which the daily check does not. |
 
 `requirements.paseo` has a minimum and no upper bound, so a new Paseo needs no release of the plugin:
