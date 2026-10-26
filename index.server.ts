@@ -12,6 +12,7 @@ import { runCommand } from "./server/run";
 import { settingsReader, startService } from "./server/service";
 import { createFileStore } from "./server/store";
 import type { UpdaterDependencies } from "./server/updater";
+import { requireHostApis } from "./shared/host";
 import { updateSettings } from "./shared/settings";
 
 const FETCH_TIMEOUT_MS = 20_000;
@@ -47,6 +48,7 @@ async function isExecutable(path: string): Promise<boolean> {
 }
 
 export default function contribute(server: PluginServerContext) {
+  requireHostApis(server, ["registerSettings", "handle"], "daemon");
   const settings = server.registerSettings(updateSettings);
   const deps: UpdaterDependencies = {
     run: runCommand,

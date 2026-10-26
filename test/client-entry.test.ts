@@ -310,6 +310,23 @@ describe("the plugin in the app", () => {
     expect(statusSchema.parse(older).showInSidebar).toBe(true);
   });
 
+  it("stops with a message naming what a newer Paseo app no longer has", async () => {
+    const fake = app({ status: QUIET });
+    const { addSidebarItem: _, ...without } = fake;
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() => contribute(without as unknown as PluginClientContext)).toThrow(/this Paseo app has no addSidebarItem\. .*update the plugin/);
+      expect(error).toHaveBeenCalledOnce();
+    } finally {
+      error.mockRestore();
+    }
+    // Nothing was registered before it stopped.
+    expect(fake.surfaces).toEqual([]);
+    expect(fake.commands).toEqual([]);
+    await settle();
+    expect(fake.calls).toEqual([]);
+  });
+
   it("changes nothing after it has been stopped", async () => {
     const fake = app({ status: QUIET, check: AVAILABLE });
     load(fake);
