@@ -29,4 +29,9 @@ describe("requireHostApis", () => {
     );
     expect(error).toHaveBeenCalledWith(expect.stringMatching(/^\[claude-update\] .*this Paseo daemon has no registerSettings, handle\./));
   });
+  it("names a function on something the host returned, and takes nothing returned as missing everything", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() => requireHostApis(undefined, ["read"], "daemon", "registerSettings().")).toThrow("this Paseo daemon has no registerSettings().read.");
+    expect(() => requireHostApis({ read() {} }, ["read"], "daemon", "registerSettings().")).not.toThrow();
+  });
 });

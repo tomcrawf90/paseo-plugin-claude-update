@@ -107,6 +107,10 @@ upper bound only for a Paseo the plugin is known to break on and cannot be fixed
 the release that fixes it. A beta of the next minor is worth one `npm run check:ui` when it comes out:
 Paseo's app can drop a deprecated plugin function that a typecheck against its SDK would not notice.
 
+One move has a date, whatever the range: Paseo removes `addSurface`, `addSidebarItem` and `openSurface` after
+2027-03-29 and the `@getpaseo/plugin/client/react-native` entry after 2027-04-20 (AGENTS.md, "Four things
+the plugin uses are deprecated"). A release before 2027-03-29 has to stop using them.
+
 GitHub switches a scheduled workflow off after 60 days without a commit to the repository. A merged
 Dependabot pull request counts; if the Actions page shows the workflow disabled, switch it on there.
 

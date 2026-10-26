@@ -161,8 +161,8 @@ If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plug
   log, before registering anything (a daemon-side one was seen on 2026-10-26 in a throwaway 0.13.1 daemon:
   `paseo plugin install` failed with the plugin's message verbatim; the app-side one is covered by tests only).
   Add a name there when an entry starts calling a new host function; `test/client-entry.test.ts` fails if the
-  client entry calls one the list lacks. It checks only that each function exists, not what it does (0.8.0's
-  `registerSettings` exists but returns nothing), and it cannot see a missing module or export that the screens
+  client entry calls one the list lacks. It checks that each function exists, not what it does, apart from
+  `registerSettings` returning something with `read` (0.8.0's returns nothing). It cannot see a missing module or export that the screens
   import (`@getpaseo/plugin/client/react-native` below, `useRpc`, `useToast`, a component): those fail at render
   or with Paseo's own load error.
   The daily compatibility check (RELEASING.md, "When Paseo changes") runs the newest Paseo, betas included.
@@ -185,7 +185,13 @@ They stay while 0.9 and 0.10 are supported: 0.10.3 has none of the replacements,
 (raising the minimum to 0.11, a major, see RELEASING.md) or by choosing between old and new at runtime with the
 same `typeof` checks. Until then, when a new Paseo minor comes out, look for the four in `evaluate.ts` at its tag
 and run `npm run check:ui` on it: a typecheck against its SDK would not notice the app dropping them. Should one
-go before the plugin has moved, `requireHostApis` names it and the plugin stops cleanly.
+go before the plugin has moved, `requireHostApis` names it and the plugin stops cleanly. The `client/react-native` entry is
+different: once Paseo drops it, its compiler refuses the import ("Unknown SDK module", `compiler.js` in 0.13.1),
+client and server are built together, so the whole plugin fails to start with that message and the guard never
+runs. A loud failure, not a silent one, but it stops the plugin: so the move has a deadline whatever the range
+says. `addSettingsScreen` (use `addScreen`) is deprecated too, with no removal date found in 0.13.1. The
+`@getpaseo/plugin` devDependency follows the minimum (0.9.0), so `tsc` does not see the newer APIs
+(`addScreen`, `addSidebarHeaderItem`, `client/ui` `useToast`): typecheck against the newest SDK when moving.
 
 ## Known limits and unverified points
 
