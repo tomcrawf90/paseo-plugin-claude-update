@@ -50,7 +50,7 @@ The settings screen:
 
 ## Install
 
-Requires Paseo 0.10.3 to 0.13 (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
+Requires Paseo 0.9.0 or later (betas included), with plugins enabled (**Settings → Plugins**), and Claude Code
 installed with its native installer on the daemon host.
 
 From the official Paseo plugin directory, once it is listed there (Paseo 0.11 or later):
@@ -194,7 +194,10 @@ whether a macOS notification is displayed when raised from the daemon. The updat
 0.10.3 daemon against a throwaway copy of the CLI; in 0.11.4 and 0.12.0 daemons a look, "Update now"
 and the release notes were. As of 2026-10-23, in throwaway 0.10.3, 0.12.0 and 0.13.0-beta.2 daemons with a
 stand-in CLI, the scheduled update and its notification, the sidebar row and its switch, the status page,
-the settings screen and the Command Center items were checked in each daemon's own web app (`npm run check:ui`).
+the settings screen and the Command Center items were checked in each daemon's own web app (`npm run check:ui`);
+as of 2026-10-26 the same in 0.9.0, 0.10.0 and 0.13.1 daemons. The range has no upper bound, so a Paseo newer
+than these is let in before anyone has run the plugin on it; if it has dropped a plugin function the plugin
+calls, the plugin stops at start and says which one (Settings → Plugins).
 
 ## Development
 
@@ -202,7 +205,7 @@ the settings screen and the Command Center items were checked in each daemon's o
 npm install
 npm run verify    # typecheck, tests, a local pre-check for both listings' rules, the changelog check
 npm run check:compat              # the oldest and the newest Paseo: range, typecheck, a throwaway daemon
-npm run check:ui -- --paseo 0.13.0-beta.2   # the screens in that Paseo's own web app (macOS, Chrome)
+npm run check:ui -- --paseo 0.13.1   # the screens in that Paseo's own web app (macOS, Chrome)
 ```
 
 The tests use a stand-in `claude` (`test/stub/claude`) and never touch a real install or the

@@ -97,8 +97,14 @@ comments on the open one).
 
 | The summary says | Do |
 | --- | --- |
-| works, but `requirements.paseo` refuses it | Usually a beta of the next minor. Read its changelog's "Plugins" section, run `npm run check:ui -- --paseo <version>` (the screens in its own web app) and, for the oldest supported Paseo, the same. Then raise the `<` bound in `paseo-plugin.json` to the minor after it, update the README, OVERVIEW.md, SUBMISSION.md, AGENTS.md and the versions in `scripts/compat.test.mjs`, and release a patch once that version is out. |
-| broken | The plugin needs a change for that Paseo. Fix it in a pull request; `npm run check:compat -- --paseo <version>` repeats the check locally. |
+| broken | The plugin needs a change for that Paseo. Fix it in a pull request; `npm run check:compat -- --paseo <version>` repeats the check locally, and `npm run check:ui -- --paseo <version>` walks the screens in that Paseo's own web app, which the daily check does not. |
+
+`requirements.paseo` has a minimum and no upper bound, so a new Paseo needs no release of the plugin:
+nothing in the release steps changes when Paseo does. Raise the minimum only when the plugin starts
+using an API an older Paseo lacks (with the `@getpaseo/plugin` devDependency, see AGENTS.md). Add an
+upper bound only for a Paseo the plugin is known to break on and cannot be fixed for in time; drop it in
+the release that fixes it. A beta of the next minor is worth one `npm run check:ui` when it comes out:
+Paseo's app can drop a deprecated plugin function that a typecheck against its SDK would not notice.
 
 GitHub switches a scheduled workflow off after 60 days without a commit to the repository. A merged
 Dependabot pull request counts; if the Actions page shows the workflow disabled, switch it on there.

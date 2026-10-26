@@ -2,6 +2,6 @@
   "id": "claude-update",
   "description": "Keeps the Claude Code CLI up to date on the Paseo host, where its own updater never runs, and shows which running agents are still on an old version.",
   "requirements": {
-    "paseo": ">=0.10.3 <0.14.0"
+    "paseo": ">=0.9.0"
   }
 }
