@@ -5,12 +5,14 @@ import { UpdateSettingsScreen } from "./client/settings";
 import { createSidebarRow } from "./client/sidebar";
 import { StatusSurface } from "./client/status";
 import { QUIET_ROW, sidebarRow } from "./shared/format";
+import { requireHostApis } from "./shared/host";
 import { checkNow, getStatus } from "./shared/status";
 
 const SURFACE_ID = "status";
 const SIDEBAR_REFRESH_MS = 60_000;
 
 export default function contribute(client: PluginClientContext) {
+  requireHostApis(client, ["addSurface", "addSettingsScreen", "addSidebarItem", "addCommandCenterItem", "rpc"], "app");
   client.addSurface(SURFACE_ID, StatusSurface);
   client.addSettingsScreen({
     id: "settings",

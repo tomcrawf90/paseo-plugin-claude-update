@@ -277,7 +277,7 @@ function ReleaseNotesCard({
   installed: string | null;
 }) {
   const toast = useToast();
-  // Paseo 0.10.3 may not give plugins this; the address below can be copied either way.
+  // Older Paseo (0.9, 0.10) may not give plugins this; the address below can be copied either way.
   const canOpen = typeof openExternalUrl === "function";
   return (
     <View style={styles.card}>

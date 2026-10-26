@@ -41,7 +41,7 @@ with until they are restarted; the plugin restarts nothing.
 
 ## Requirements and limits
 
-- Paseo 0.10.3 to 0.13, with plugins enabled.
+- Paseo 0.9.0 or later, with plugins enabled.
 - Claude Code installed with its native installer on the daemon host. Homebrew, WinGet and npm-based installs of Claude Code are not handled.
 - Tested on macOS. The process list and desktop notifications are macOS only; Linux and Windows are untested.
 - `claude update` follows Claude Code's own `autoUpdatesChannel`. To follow `stable`, set it there as well as in the plugin; the plugin tells you when they differ and installs nothing.

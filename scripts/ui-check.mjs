@@ -10,7 +10,7 @@
 //   settings      the settings screen's "Checks" section and its "Check now"; its sidebar switch brings the row back
 //   daemon log    nothing from the plugin on stderr, and no warning or error about it
 //
-//   npm run check:ui -- --paseo 0.13.0-beta.2     # macOS, Chrome; CHROME_PATH to use another
+//   npm run check:ui -- --paseo 0.13.1            # macOS, Chrome; CHROME_PATH to use another
 //
 // The stand-in CLI starts three versions behind Claude Code's release pointer
 // and "updates" to one behind it, so a look afterwards still finds an update.

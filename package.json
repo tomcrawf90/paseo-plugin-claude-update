@@ -51,7 +51,7 @@
     "check:ui": "node scripts/ui-check.mjs"
   },
   "devDependencies": {
-    "@getpaseo/plugin": "0.10.3",
+    "@getpaseo/plugin": "0.9.0",
     "@tanstack/react-query": "^5.104.4",
     "@types/node": "^22.10.2",
     "@types/react": "~19.2.0",

@@ -12,7 +12,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 
 | Path | Holds |
 | --- | --- |
-| `paseo-plugin.json` | Manifest: `id`, `description`, `requirements.paseo`. Paseo Cafe rejects any other key while the minimum is below 0.11, and Paseo 0.10 refuses `name`, `icon` and `media`. The description is the same sentence as `package.json`'s. |
+| `paseo-plugin.json` | Manifest: `id`, `description`, `requirements.paseo`. Paseo Cafe rejects any other key while the minimum is below 0.11, and Paseo 0.9 and 0.10 refuse `name`, `icon` and `media`. The description is the same sentence as `package.json`'s. |
 | `OVERVIEW.md` | The official Paseo directory's page for the plugin, shipped in the package: what it installs, runs, reads and sends. No install commands in it. |
 | `docs/screenshots/` | The listing screenshots, made by `npm run screenshots`, each shown in the README by its raw.githubusercontent.com address on `main`. Not in `images/`: Paseo Cafe shows that folder's files, by commit-pinned address, as well as the README's images, so with the README's `main` addresses each would appear twice. |
 | `index.server.ts` | Daemon entry: wires real dependencies (process runner, fetch, files, clock) into the service and registers settings and RPCs. |
@@ -23,7 +23,7 @@ installer's marker against the old npm updater. See `README.md` for what users a
 | `server/claude.ts` | The only calls to the CLI: `--version`, `update`, `install <version>`; the release pointer; Claude's own channel. |
 | `server/processes.ts` | Lists running Claude processes and their versions (`ps` + `lsof`, macOS). Read only. |
 | `server/store.ts`, `paths.ts`, `run.ts`, `notify.ts` | State, notes and log files; data directory and finding `claude`; running a program without a shell; macOS notification. |
-| `shared/` | Settings schema, RPC contracts, version and display helpers. No Node or React imports. |
+| `shared/` | Settings schema, RPC contracts, version and display helpers, and `requireHostApis` (`host.ts`), which both entries call first. No Node or React imports. |
 | `index.client.tsx`, `client/` | Status page, settings screen, sidebar row, Command Center items. React Native primitives only. Three modules hold logic apart from React Native so it can be tested: `client/sidebar.ts` (adding, changing and removing the row, one change at a time), `client/activity.ts` (what the buttons and the progress line say) and `client/bus.ts` (passes each status read to the sidebar row). `client/check.ts` is the hook both screens use for the status and the two buttons, and `useRefreshStatus`, which reads the status again after the sidebar switch is saved and publishes it even when it reads as before (`saveShowInSidebar` in `client/sidebar.ts`). The client entry drops a 60 s read that a newer published status overtook (`publishedCount` in `client/bus.ts`), so a read from before the switch was saved cannot bring the row back. What the "Checks" lines say (last check, last result, last update, next check) is in `shared/format.ts`. `test/client-entry.test.ts` runs the entry against a pretend app. |
 | `test/stub/claude` | A stand-in CLI for tests. `test/support.ts` has the in-memory doubles. |
 | `test/listing-check.mjs` | Local copy of both listings' rules that can be checked here (`npm run lint:listings`). |
@@ -144,28 +144,54 @@ that tag is what publishes. [RELEASING.md](RELEASING.md) has every step; in shor
 Never run `npm publish` by hand, never move or reuse a tag, and never put a token in the repository.
 
 If the minimum Paseo version changes, update `requirements.paseo` in `paseo-plugin.json`, the
-`@getpaseo/plugin` version in `package.json`, the README, `OVERVIEW.md` and `SUBMISSION.md`. It is `>=0.10.3 <0.14.0`: 0.10.3 is the
-oldest version the plugin has been typechecked and run against. No separate prerelease branch is needed:
-Paseo (`assertPluginCompatibility` in `packages/protocol/src/plugin-requirements.ts`, the same in 0.10.3,
-0.12.0 and 0.13.0-beta.2) accepts a version when either it or its `major.minor.patch` satisfies the range, so
-`0.12.0-beta.1` passes as `0.12.0`. The app runs the same check before it loads a plugin's client code. The daily compatibility check (RELEASING.md, "When
-Paseo changes") says when a new Paseo needs the bound raised or the plugin changed. The `<0.13.0` bound was raised on
-2026-10-20 after the plugin ran in throwaway 0.11.4 and 0.12.0 daemons (look, update, release notes;
-the 0.12.0 status page and settings screen in its own web UI) and typechecked against
-`@getpaseo/plugin` 0.12.0, whose types are the same as 0.11.4's. The `<0.14.0` bound was raised on 2026-10-23
-after `npm run check:ui` passed every step in throwaway 0.10.3, 0.12.0 and 0.13.0-beta.2 daemons and
-`npm run check:compat` passed for 0.10.3 and 0.13.0-beta.2 (typecheck against `@getpaseo/plugin` 0.13.0-beta.2;
-Paseo's `assertPluginCompatibility` is the same in 0.13.0-beta.2). Raise it again once the same has passed on 0.14.
+`@getpaseo/plugin` version in `package.json`, the README, `OVERVIEW.md`, `SUBMISSION.md` and the versions in
+`scripts/compat.test.mjs`. It is `>=0.9.0`, with no upper bound, and that is deliberate: keep it that way.
+
+- **Why no upper bound.** 0.3.0 shipped `>=0.10.3 <0.13.0`. Paseo checks the range when it installs, starts,
+  enables or reloads a plugin (`assertPluginCompatibility` in `packages/protocol/src/plugin-requirements.ts`,
+  the same from 0.10.3 to 0.13.1), so the day a daemon moved to 0.13 the installed plugin went to `failed` with
+  `Plugin "claude-update" requires Paseo >=0.10.3 <0.13.0. Your daemon is 0.13.1. Use a compatible plugin
+  version or update the daemon.` (reproduced 2026-10-26 by upgrading a throwaway 0.12.0 daemon with 0.3.0
+  installed to 0.13.1). A cap breaks every installed copy at every Paseo minor until a release raises it, and
+  the plugin had needed no code change for any minor. Paseo's reference
+  (<https://paseo.sh/docs/plugins/reference.md>, "Requirements") recommends a minimum alone and an upper bound
+  only once a later release is known to be incompatible.
+- **What stands in for it.** Both entries call `requireHostApis` (`shared/host.ts`) first: if the running Paseo
+  lacks a function the entry calls, the plugin stops with a message naming it, in Settings → Plugins and the
+  log, before registering anything (a daemon-side one was seen on 2026-10-26 in a throwaway 0.13.1 daemon:
+  `paseo plugin install` failed with the plugin's message verbatim; the app-side one is covered by tests only).
+  Add a name there when an entry starts calling a new host function; `test/client-entry.test.ts` fails if the
+  client entry calls one the list lacks. It checks that each function exists, not what it does, apart from
+  `registerSettings` returning something with `read` (0.8.0's returns nothing). It cannot see a missing module or export that the screens
+  import (`@getpaseo/plugin/client/react-native` below, `useRpc`, `useToast`, a component): those fail at render
+  or with Paseo's own load error.
+  The daily compatibility check (RELEASING.md, "When Paseo changes") runs the newest Paseo, betas included.
+- **Why 0.9.0.** On 2026-10-26 `npm run check:compat` (typecheck against that SDK, throwaway daemon, look-only
+  check) passed for 0.9.2, 0.10.0, 0.10.3 and 0.13.1, and its typecheck for 0.9.0 (now the devDependency, so
+  `npm run typecheck` covers it); the daemon step for 0.9.0 passed in the pull request's "Paseo minimum" job.
+  `npm run check:ui` passed every step in 0.9.0, 0.10.0 and 0.13.1. 0.8.0 fails: its `registerSettings` returns nothing and its SDK has no
+  `openExternalUrl`. Paseo Cafe also refuses the manifest's `description` below 0.9.0-beta.1. `>=0.9.0`
+  admits 0.9.0's betas through their `major.minor.patch`; they were not run.
+- Betas: Paseo accepts a version when either it or its `major.minor.patch` satisfies the range, so
+  `0.14.0-beta.1` passes as `0.14.0`. The app runs the same check before it loads a plugin's client code.
 
 Four things the plugin uses are deprecated, with a removal date in Paseo's source
 (`COMPAT(...)` comments in `packages/app/src/plugins/evaluate.ts`, read at `v0.13.0-beta.2`):
 `addSurface` (use `addScreen`), `addSidebarItem` (use `addSidebarHeaderItem`) and `openSurface` (use `openScreen`),
 deprecated since 0.11.0, "remove after 2027-03-29"; and the `@getpaseo/plugin/client/react-native` entry (use
-`@getpaseo/plugin/client/ui`), deprecated in 0.13.0, "remove after 2027-04-20". All four still work in 0.13.0-beta.2.
-They stay while 0.10 is supported: 0.10.3 has none of the replacements, and its `client/ui` exports no
-`ScrollView` or `useToast`. So a release before 2027-03-29 has to drop 0.10 (a major, see RELEASING.md) and move
-to them. Until then, before each raise of the bound, look for the four in `evaluate.ts` at the new Paseo's tag: a
-typecheck against its SDK would not notice the app dropping them.
+`@getpaseo/plugin/client/ui`), deprecated in 0.13.0, "remove after 2027-04-20". All four still work in 0.13.1.
+They stay while 0.9 and 0.10 are supported: 0.10.3 has none of the replacements, and its `client/ui` exports no
+`ScrollView` or `useToast`. So a release before 2027-03-29 has to move to them, either by dropping 0.9 and 0.10
+(raising the minimum to 0.11, a major, see RELEASING.md) or by choosing between old and new at runtime with the
+same `typeof` checks. Until then, when a new Paseo minor comes out, look for the four in `evaluate.ts` at its tag
+and run `npm run check:ui` on it: a typecheck against its SDK would not notice the app dropping them. Should one
+go before the plugin has moved, `requireHostApis` names it and the plugin stops cleanly. The `client/react-native` entry is
+different: once Paseo drops it, its compiler refuses the import ("Unknown SDK module", `compiler.js` in 0.13.1),
+client and server are built together, so the whole plugin fails to start with that message and the guard never
+runs. A loud failure, not a silent one, but it stops the plugin: so the move has a deadline whatever the range
+says. `addSettingsScreen` (use `addScreen`) is deprecated too, with no removal date found in 0.13.1. The
+`@getpaseo/plugin` devDependency follows the minimum (0.9.0), so `tsc` does not see the newer APIs
+(`addScreen`, `addSidebarHeaderItem`, `client/ui` `useToast`): typecheck against the newest SDK when moving.
 
 ## Known limits and unverified points
 
@@ -177,12 +203,13 @@ typecheck against its SDK would not notice the app dropping them.
 | The always-present row, the "Checks" card and the settings "Checks" section | Seen 2026-10-08 in the Paseo 0.10.3 app's own web bundle (served from `Paseo.app/Contents/Resources/app-dist` on a local port and opened in a browser, not the desktop window), connected to a throwaway 0.10.3 daemon with the stub CLI. The row read "Claude update ready" with an update waiting and auto-update off, and "Claude Code updates" after "Update now" and a dismissal; "Check now" worked from the status page and from the settings screen; a failed check showed its reason; the narrow layout stacked. To repeat it, the daemon needs the page's origin in `daemon.cors.allowedOrigins` of its `config.json`. Paseo's bar above the page keeps the title the row had when the page was opened until the page is opened again. Not seen in the desktop app or on a phone. |
 | Paseo 0.11.4 and 0.12.0 | Checked 2026-10-20 in throwaway daemons of each (`@getpaseo/cli` from npm, its own home and port, a copied CLI 2.1.302): the plugin loaded, a look reported 2.1.304 and installed nothing, "Update now" installed it, and the release notes were read. On 0.12.0 the status page (with "Check now") and the settings screen ("Checks" section) worked in the web UI that daemon serves itself: `"features": {"webUi": {"enabled": true}}` in its `config.json` serves it on the daemon's port, with no CORS setting. Writing `config.json` after an install drops the install (it is recorded there). The process list read as unsupported under `sandbox-exec`, as before. Not seen in the 0.12 desktop app. |
 | Paseo 0.13.0-beta.2 | Checked 2026-10-23 with `npm run check:ui`, which passed the same 15 steps on 0.10.3 and 0.12.0: the first scheduled check installed with auto-update on and raised its notification (to the stand-in `osascript`); the row was there, opened the status page, kept its plain title after the update, and read "Claude update ready" after the auto-update switch went off and "Check now" looked; "Show in the sidebar" off took it away, also after a reload; the three Command Center items were listed from the status page, and "check now" and "settings" worked; the settings screen's "Check now" worked and its switch brought the row back. Nothing but the scheduled check ran the installer, the plugin wrote nothing to stderr, and Paseo logged no warning or error about it. The daemon and the app admitted the real manifest (the walk does not open up the range). Stand-in CLI only; no copied real CLI was run on 0.13, as nothing between the plugin and the CLI depends on Paseo. Not seen in the 0.13 desktop app or on a phone. |
+| Paseo 0.13.1, 0.9.0 and 0.10.0, with no upper bound | Checked 2026-10-26: 0.3.0 (`<0.13.0`) installed in a throwaway 0.12.0 daemon went to `failed` when that daemon was restarted as 0.13.1, and a fresh install there was refused, both with "requires Paseo >=0.10.3 <0.13.0. Your daemon is 0.13.1". With `>=0.9.0` the same upgrade left it `running`, and `npm run check:ui` passed all 15 steps in 0.9.0, 0.10.0 and 0.13.1 with the real manifest. The live daemon on the owner's Mac was still 0.12.0 that day (0.13.0 downloaded, not applied), so this was not seen there. Stand-in CLI only. `requireHostApis` stopping the plugin is covered by tests only: no Paseo yet lacks a function it checks. |
 | The page's title from the Command Center | Opened from the sidebar row, Paseo's bar above the status page reads the row's title; opened from the Command Center ("open status" or "check now") it reads "status", the page's id. `addSurface` titles a screen by its id, and only the `/sidebar/<id>` route takes the row's title (`evaluate.ts`). Seen 2026-10-23 in the web apps of 0.10.3, 0.12.0 and 0.13.0-beta.2, so not new in 0.13; with the row off it is the only way in. `addScreen` with a title fixes it, which needs 0.11 (see the deprecations above). |
 | Paseo's own switch for the row | Paseo's sidebar layout (Settings → Sidebar, 0.11 and later) keeps a visible flag per item under `plugin:<plugin id>:<item id>`, here `plugin:claude-update:status` (read from the 0.13.0-beta.2 bundle, not tried). A row hidden there stays hidden, news included, whatever "Show in the sidebar" says. Not mentioned to users. |
 | Command Center items need a host page | The web app of 0.12.0 and 0.13.0-beta.2 builds plugin Command Center items only while the route names a host (a workspace, a plugin page such as the status page); on the start page of a host with no project the items are not there. Read from the 0.13.0-beta.2 bundle (`PluginCommandCenterActions`: the host is the active workspace's or the one in the path) and seen in both; the 0.10.3 bundle has the same test. So with the row off, on the start page, the way in is Settings → Plugins. |
 | The row after an update (0.2.1) | The row is now always there (see Conventions), so read "registered no row" below as "the row keeps its plain title". Checked 2026-10-07 in a throwaway 0.10.3 daemon with the stub CLI: after a scheduled update `status.get` reported `updated` with two processes on another version, and the client entry, given that answer by a pretend app, registered no row. A look with auto-update off gave "Claude update ready", and a failed "Update now" gave "Claude update failed", which a following look left in place. Not seen in the app's own sidebar, so that the titles stay on one line there is taken from their length (20 characters at most, against the 33 that fitted on the first line of the 0.2.0 row in the owner's screenshot), not seen. |
 | The "Show in the sidebar" switch | Seen 2026-10-23 in the web UI a throwaway Paseo 0.12.0 daemon serves itself, with the stub CLI: switched off on the status page the row went at once, on again it came back, it stayed away after a reload, and the settings screen's switch did the same (seen on leaving Settings, whose own navigation replaces the app sidebar). On a throwaway 0.10.3 daemon `status.get` reported `showInSidebar` false for a settings file with it off and true for one without the key. On 2026-10-23 `npm run check:ui` did the same off, reload and on again in the web apps of 0.10.3, 0.12.0 and 0.13.0-beta.2. Not seen in the desktop window or on a phone. On a phone the Command Center may not be there (the 0.12.0 bundle opens it by keyboard command), so with the row off the status page and "Update now" may be out of reach there; the settings screen, with "Check now" and this switch, is still under Settings → Plugins. The row is added before the first status read, so with the switch off it can show for a moment while the app starts, and stays while the host cannot be reached. |
-| Adding and removing the sidebar row at runtime | Read from the Paseo 0.10.3 app bundle, not from documentation: the function `addSidebarItem` returns takes the item out of the list, frees its id and tells the app to redraw, at any time; a plugin may register no row at start. Paseo 0.11 documents runtime add and remove for its newer `addSidebarHeaderItem`/`addSidebarFooterItem` and calls `addSidebarItem` deprecated, so move to those when 0.10 support is dropped. |
+| Adding and removing the sidebar row at runtime | Read from the Paseo 0.10.3 app bundle, not from documentation: the function `addSidebarItem` returns takes the item out of the list, frees its id and tells the app to redraw, at any time; a plugin may register no row at start. Paseo 0.11 documents runtime add and remove for its newer `addSidebarHeaderItem`/`addSidebarFooterItem` and calls `addSidebarItem` deprecated, so move to those when 0.9 and 0.10 support is dropped, or behind a `typeof` check (see the deprecations above). |
 | `useRpc` and the query client on the settings screen | The "Checks" section of the settings screen uses `useRpc` and `useQuery`. Read from the Paseo 0.10.3 app bundle: a settings screen is wrapped in the same `PluginRuntimeBoundary` as a surface (RPC provider, the plugin's one query client), so both screens share the cached status. The spinner and the "Finished" line belong to the screen that was pressed; the other screen shows the result at its next read (30 s at most). |
 | `useSettings` on the status page | The page reads the settings once (`useSettings` in `StatusSurface`) and hands them to both switches, so one waits for the other's save. Saving through it was seen working on 2026-10-23 in Paseo 0.12.0's own web UI (the "Show in the sidebar" switch, the row below); the auto-update switch on the page is the same code and was not tried separately. |
 | Cost of the status call | `status.get` runs `ps`, `lsof` and an agent list each time, and is polled every 60 s by each connected app and every 30 s by an open status page or settings screen (every 2 s while a check is running). Fine on one machine; a lighter notice-only call is the obvious next step if it ever matters. |

@@ -310,6 +310,55 @@ describe("the plugin in the app", () => {
     expect(statusSchema.parse(older).showInSidebar).toBe(true);
   });
 
+  it("stops with a message naming what a newer Paseo app no longer has", async () => {
+    const fake = app({ status: QUIET });
+    const { addSidebarItem: _, ...without } = fake;
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() => contribute(without as unknown as PluginClientContext)).toThrow(/this Paseo app has no addSidebarItem\. .*update the plugin/);
+      expect(error).toHaveBeenCalledOnce();
+    } finally {
+      error.mockRestore();
+    }
+    // Nothing was registered before it stopped.
+    expect(fake.surfaces).toEqual([]);
+    expect(fake.commands).toEqual([]);
+    await settle();
+    expect(fake.calls).toEqual([]);
+  });
+
+  // What the entry checks for (index.client.tsx); every host function it calls must be here.
+  const HOST_APIS = ["addSurface", "addSettingsScreen", "addSidebarItem", "addCommandCenterItem", "rpc"];
+
+  it("checks for every host function it calls, and for nothing else", async () => {
+    const fake = app({ status: QUIET });
+    const called = new Set<string>();
+    const watched = new Proxy(fake, {
+      get(target, name, receiver) {
+        const value = Reflect.get(target, name, receiver);
+        if (typeof name !== "string" || typeof value !== "function") return value;
+        return (...args: unknown[]) => {
+          called.add(name);
+          return (value as (...inner: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    });
+    cleanup = contribute(watched as unknown as PluginClientContext);
+    await settle();
+    expect([...called].sort()).toEqual([...HOST_APIS].sort());
+  });
+
+  it.each(HOST_APIS)("stops at start, naming it, on an app without %s", (name) => {
+    const fake = app({ status: QUIET });
+    const without = Object.fromEntries(Object.entries(fake).filter(([key]) => key !== name));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() => contribute(without as unknown as PluginClientContext)).toThrow(`this Paseo app has no ${name}.`);
+    } finally {
+      error.mockRestore();
+    }
+  });
+
   it("changes nothing after it has been stopped", async () => {
     const fake = app({ status: QUIET, check: AVAILABLE });
     load(fake);

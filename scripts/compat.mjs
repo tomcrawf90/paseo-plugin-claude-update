@@ -4,7 +4,8 @@
 //   range      requirements.paseo admits it, by Paseo's own rule
 //   typecheck  the plugin compiles against @getpaseo/plugin of that version
 //   daemon     a throwaway daemon of that version (scripts/daemon.mjs) loads the
-//              plugin, whose range is opened up for this, and answers status.get
+//              plugin, whose range is opened up for this (so a version below the
+//              minimum can be tried too), and answers status.get
 //              and a look-only status.check without the CLI being asked to install
 //
 //   npm run check:compat                        # the minimum and the newest Paseo
@@ -51,7 +52,8 @@ export function minimumVersion(range) {
 /** What a failed version means, for the summary. */
 export function verdict(result) {
   if (result.daemon === "fail" || result.typecheck === "fail") return "broken: the plugin needs a fix for this Paseo";
-  if (result.range === "fail") return "works, but requirements.paseo refuses it: raise the range and release";
+  // The range has no maximum, so only a version below its minimum lands here.
+  if (result.range === "fail") return "works, but requirements.paseo refuses it (below its minimum)";
   return "ok";
 }
 
