@@ -108,10 +108,7 @@ jobs:
           TARBALL: ${{ runner.temp }}/release/${{ needs.verify.outputs.tarball }}
         run: |
           if [ -n "$NPM_TOKEN" ]; then
-            echo "An NPM_TOKEN secret is set; it is used if trusted publishing is not configured."
             export NODE_AUTH_TOKEN="$NPM_TOKEN"
-          else
-            echo "No NPM_TOKEN secret; publishing depends on npm trusted publishing."
           fi
           if ! npm publish "$TARBALL" --access public --provenance; then
             echo "::error title=npm publish failed::Nothing was published. If npm refused the credentials: the package needs this repository and release.yml as its trusted publisher on npmjs.com, or (for the first release, before the package exists) a granular token in the NPM_TOKEN repository secret. See RELEASING.md."
