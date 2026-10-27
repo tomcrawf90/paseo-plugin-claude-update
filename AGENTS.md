@@ -216,7 +216,7 @@ says. `addSettingsScreen` (use `addScreen`) is deprecated too, with no removal d
 | macOS notification raised from the daemon | Not confirmed on screen. One may have been raised during the throwaway-daemon run; errors from it are swallowed by design and nobody was watching the screen. That a scheduled update reaches `osascript` with its message, from a daemon of 0.10.3, 0.12.0 and 0.13.0-beta.2, was checked on 2026-10-23 with a stand-in `osascript` (`npm run check:ui`). |
 | Listing old processes | Verified through a live 0.10.3 daemon on 2026-10-07 (`status.get`): supported, and it reported the one process on an old version (a leftover 2.1.269) while the ten on the installed version were not listed. A home directory with a space in it is covered by tests only. |
 | A manual look-only check | Verified through a live daemon the same day: `status.check` with `apply: false` reported 2.1.285 against 2.1.292 and ran only `claude --version`. |
-| The release workflow | Run once, for `v0.2.1` on 2026-10-21: everything up to `npm publish` passed, and npm refused the token (E403), so nothing is on npm. Publishing by token and by trusted publisher, and the GitHub release job, are unseen. See "Not verified" in `RELEASING.md`. |
+| The release workflow | Not verified points are listed under "Not verified" in `RELEASING.md`. |
 | Linux, Windows | Untested. The process list and notifications are macOS only by design. |
 | Homebrew, WinGet, npm installs of Claude Code | Not supported; `claude update` is for the native installer. |
 | An update cut short by a plugin reload or daemon stop | Not tested. The CLI is assumed to leave the old version in place. |

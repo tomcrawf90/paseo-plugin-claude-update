@@ -47,13 +47,13 @@ Sources, read 2026-10-21: getpaseo/plugins at `702e140` (README, REVIEW.md, BOTS
 Publishing is done by the release workflow when a tag is pushed, never by hand. The npm setup and the
 release steps are in [RELEASING.md](RELEASING.md).
 
-| # | Step | Done |
-| --- | --- | --- |
-| 1 | GitHub repository, public | yes |
-| 2 | Release pull request for 0.2.1, merged | yes (#10, 2026-10-21) |
-| 3 | npm credentials for the first release (`NPM_TOKEN`, RELEASING.md) | set, but npm refused them (E403, 2026-10-21) |
-| 4 | Tag `v0.2.1` pushed from `main`; the Release workflow ended green | pushed on 71e405b; the run failed at publishing, to be tagged again |
-| 5 | `npm view paseo-plugin-claude-update@0.2.1` answers, and the package installs in a throwaway daemon | no |
+| # | Step |
+| --- | --- |
+| 1 | GitHub repository, public |
+| 2 | Release pull request merged |
+| 3 | npm publishing set up (RELEASING.md, "Setting up npm publishing") |
+| 4 | Tag `vX.Y.Z` pushed from `main`; the Release workflow ended green |
+| 5 | `npm view paseo-plugin-claude-update@X.Y.Z` answers, and the package installs in a throwaway daemon |
 
 `npm pack --dry-run` on 2026-10-21: 29 files, 40.5 kB packed. The manifest, the two entries,
 `client/`, `server/`, `shared/` without tests, `OVERVIEW.md`, `README.md`, `CHANGELOG.md`, `LICENSE`,
