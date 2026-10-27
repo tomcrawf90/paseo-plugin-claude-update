@@ -7,10 +7,12 @@ changelog disagrees with it, and the release workflow fails when the tag does.
 
 Pushing the tag is the release. `.github/workflows/release.yml` does the rest.
 
-As of 2026-10-21: nothing is on npm. Tag `v0.2.1` was pushed on 71e405b and its run stopped at
-"Publish to npm" with `E403 ... You may not perform that action with these credentials` while
-`NPM_TOKEN` was set; the verify job, the tag checks and provenance signing all passed. 0.2.1 is still
-the first version to release, from a new tag ("When a release fails", 2 and 4).
+As of 2026-10-27: 0.2.1 and 0.3.0 are on npm, each published by this workflow with a provenance
+statement. npm names the owner's account as the publisher of both, not GitHub Actions, and the
+`NPM_TOKEN` secret is still set, so 0.3.0 most likely went out with the token rather than the trusted
+publisher. Step 5 below is not done, and steps 6 to 8 are not confirmed. (0.2.1's first tag run, on 71e405b, stopped at "Publish
+to npm" with `E403 ... You may not perform that action with these credentials`; a second tag run
+published it.)
 
 ## Once, around the first two releases
 
@@ -173,7 +175,7 @@ None of these are set by the code in this repository. Most useful first.
 
 | Point | State |
 | --- | --- |
-| The release workflow end to end | Run once, for `v0.2.1` on 2026-10-21: the tag checks, the verify job, packing and provenance signing passed, and npm refused the token (E403). The publish with an accepted token and the GitHub release job have not run. |
-| Publishing with a token, then with a trusted publisher | Not done. That npm tries the trusted publisher first and falls back to the token was read in the npm CLI source (`lib/utils/oidc.js`), not seen. |
+| The release workflow end to end | Seen working for `v0.2.1` (its second run, 2026-10-21) and `v0.3.0` (2026-10-23): tag checks, verify, publish with provenance and the GitHub release. The first `v0.2.1` run stopped at publishing, npm refusing the token (E403). |
+| Publishing with a token, then with a trusted publisher | Publishing with the token is seen to work. Publishing through the trusted publisher is not confirmed: npm names the owner's account, not GitHub Actions, as publisher of 0.3.0. That npm tries the trusted publisher first and falls back to the token was read in the npm CLI source (`lib/utils/oidc.js`), not seen. |
 | The npm form and token screens | Taken from npm's documentation on 2026-10-07 and read again on 2026-10-20, not from the screens. That includes: a package must exist before it can name a trusted publisher, the 2-day expiry of an unused one, and the choices on the token form. |
 | The ruleset and settings names | Written from GitHub's documentation, not clicked through on this repository. |
