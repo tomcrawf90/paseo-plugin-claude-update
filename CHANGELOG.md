@@ -3,7 +3,7 @@
 All notable changes to this plugin are listed here. Versions follow [semantic versioning](https://semver.org).
 A version marked "not published" was finished but never reached npm; its changes are in the next published one.
 
-## Unreleased
+## 0.3.1 - 2026-10-27
 
 - Runs on any Paseo from 0.9.0 on, 0.13 and later included: the supported range is now `>=0.9.0`, with no upper bound. 0.3.0 and earlier refused any Paseo from 0.13 on ("requires Paseo >=0.10.3 <0.13.0"), so after a Paseo update the plugin stopped loading. A new Paseo no longer needs a new release of the plugin.
 - If a later Paseo drops a plugin function the plugin calls, the plugin stops at start with an error naming it, in place of a bare "is not a function".
