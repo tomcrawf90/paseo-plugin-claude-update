@@ -89,7 +89,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           title="Paseo compatibility check failed"
-          body="The check failed on main: $RUN_URL. Its summary says whether the range needs raising or the plugin needs a fix (RELEASING.md, \"When Paseo changes\")."
+          body="The check failed on main: $RUN_URL. Its summary says which Paseo version broke the plugin, or whether the run itself failed (RELEASING.md, \"When Paseo changes\")."
           number="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "$body"
